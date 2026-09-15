@@ -1,0 +1,44 @@
+### 1. Gerar Token (Login)
+POST http://127.0.0.1:8000/api/auth/token/
+Content-Type: application/json
+
+{
+    "username": "nome_usuario",
+    "password": "senha_usuario"
+}
+
+### Variável de Ambiente (token) para armazenar o token JWT retornado na resposta do login
+@token = "token_access"
+
+### 2. Cadastrar Cliente B2B (Rota Protegida)
+POST http://127.0.0.1:8000/api/clients/
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "Tech Corp S/A",
+    "email": "contato@techcorp.com",
+    "phone": "11999999999",
+    "cnpj_cpf": "12345678000199",
+    "company_name": "Tech Corp Representações"
+}
+
+### 3. Listar Meus Clientes (Rota Protegida e Isolada)
+GET http://127.0.0.1:8000/api/clients/
+Authorization: Bearer {{token}}
+
+### 4. Criar Pedido (Atrelando ao Cliente ID 1)
+POST http://127.0.0.1:8000/api/orders/
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "client": 1,
+    "total_amount": "12500.50",
+    "status": "PENDING",
+    "order_date": "2026-09-15T14:30:00Z"
+}
+
+### 5. Listar Meus Pedidos (Testando a Segurança Relacional)
+GET http://127.0.0.1:8000/api/orders/
+Authorization: Bearer {{token}}
