@@ -1,4 +1,4 @@
-## 🚀 Preparação do Servidor de Produção
+## Preparação do Servidor de Produção
 
 Antes de subir os containers via Docker Compose em produção, é necessário ajustar a configuração de memória do sistema operacional (Linux) para evitar falhas no Redis:
 
