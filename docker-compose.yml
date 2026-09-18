@@ -1,0 +1,49 @@
+services:
+  # ==========================================
+  # WEB: Backend Django (API Principal)
+  # ==========================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Inicia o servidor do Django exposto para todas as interfaces (0.0.0.0) com auto-reload
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 --reload
+    # Mapeamento de volume: qualquer alteração no editor reflete no container na hora (Hot Reload)
+    volumes:
+      - ./backend:/app
+    # Expõe a porta 8000 do container para a porta 8000 do pc host, permitindo acesso externo à API
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+    # A API depende do Redis estar de pé para funcionar corretamente com o Celery
+    depends_on:
+      - redis
+
+  # ==========================================
+  # REDIS como mensageiro (Message Broker)
+  # ==========================================
+  redis:
+    # imagem oficial e super leve do Redis (Alpine Linux)
+    image: redis:7-alpine
+    # Expõe a porta padrão do Redis para comunicação
+    ports:
+      - "6379:6379"
+
+  # ==========================================
+  # CELERY: O Trabalhador Braçal (Background Tasks)
+  # ==========================================
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Inicia o Celery apontando para as configurações do app 'core'
+    command: celery -A core worker -l info
+    volumes:
+      - ./backend:/app
+    environment:
+      - DEBUG=True
+    # O Celery só faz sentido se o Redis e o Web estiverem rodando
+    depends_on:
+      - web
+      - redis
