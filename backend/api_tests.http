@@ -3,12 +3,12 @@ POST http://127.0.0.1:8000/api/auth/token/
 Content-Type: application/json
 
 {
-    "username": "nome_usuario",
-    "password": "senha_usuario"
+    "username": "seu_email@exemplo.com",
+    "password": "sua_senha_secreta"
 }
 
 ### Variável de Ambiente (token) para armazenar o token JWT retornado na resposta do login
-@token = "token_access"
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkwMTIzODg3LCJpYXQiOjE3OTAxMjAyODcsImp0aSI6ImRjNzEwMTUzNTY1NjQ2MmY5MjUxNWZlMDMwOTY5YTA2IiwidXNlcl9pZCI6IjIifQ.2qIO3M6oZwJbI4q74WwMzFfg8GiZTmk2LL3u9DXHMsk
 
 ### 2. Cadastrar Cliente B2B (Rota Protegida)
 POST http://127.0.0.1:8000/api/clients/
@@ -41,4 +41,27 @@ Authorization: Bearer {{token}}
 
 ### 5. Listar Meus Pedidos (Testando a Segurança Relacional)
 GET http://127.0.0.1:8000/api/orders/
+Authorization: Bearer {{token}}
+
+### Variável para armazenar o ID do upload (substitua com o UUID retornado no POST abaixo)
+@upload_id = 6677ddfd-1e68-471b-8e74-67ebe251c6f9
+
+### 6. Enviar Arquivo CSV (Upload Massivo Assíncrono)
+# O boundary funciona como uma "fronteira" para separar os dados do arquivo
+POST http://127.0.0.1:8000/api/upload-csv/
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----NinjaBoundary
+
+------NinjaBoundary
+Content-Disposition: form-data; name="file"; filename="vendas_teste.csv"
+Content-Type: text/csv
+
+documento_cliente,nome_cliente,email_cliente,telefone_cliente,segmento_cliente,estado_cliente,numero_pedido,data_pedido,valor_pedido,categoria_produto,status_pedido
+12345678000199,TechCorp Solutions,compras@techcorp.com,11999998888,Tecnologia,SP,PED-2026-001,2026-09-15,15500.00,Licenca Anual,Concluido
+98765432000188,Mega Varejo S/A,contato@megavarejo.com,21988887777,Varejo,RJ,PED-2026-002,2026-09-16,8400.00,Consultoria,Pendente
+------NinjaBoundary--
+
+
+### 7. Consultar Status do Upload (Polling)
+GET http://127.0.0.1:8000/api/upload-csv/{{upload_id}}/status/
 Authorization: Bearer {{token}}

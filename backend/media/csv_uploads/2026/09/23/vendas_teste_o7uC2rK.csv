@@ -1,0 +1,3 @@
+documento_cliente,nome_cliente,email_cliente,telefone_cliente,segmento_cliente,estado_cliente,numero_pedido,data_pedido,valor_pedido,categoria_produto,status_pedido
+12345678000199,TechCorp Solutions,compras@techcorp.com,11999998888,Tecnologia,SP,PED-2026-001,2026-09-15,15500.00,Licenca Anual,Concluido
+98765432000188,Mega Varejo S/A,contato@megavarejo.com,21988887777,Varejo,RJ,PED-2026-002,2026-09-16,8400.00,Consultoria,Pendente

@@ -154,3 +154,9 @@ SIMPLE_JWT = {
 # Configurações do Celery apontando para o container do Redis
 CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_RESULT_BACKEND = "redis://redis:6379/0"
+
+# Configuração para armazenamento temporário de arquivos CSV evniado pelo usuário, para que o Celery possa processá-los
+import os
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
