@@ -1,14 +1,15 @@
 ### 1. Gerar Token (Login)
+# @name login
 POST http://127.0.0.1:8000/api/auth/token/
 Content-Type: application/json
 
 {
-    "username": "seu_email@exemplo.com",
-    "password": "sua_senha_secreta"
+    "username": "seu_usuario",
+    "password": "sua_senha"
 }
 
-### Variável de Ambiente (token) para armazenar o token JWT retornado na resposta do login
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkwMTIzODg3LCJpYXQiOjE3OTAxMjAyODcsImp0aSI6ImRjNzEwMTUzNTY1NjQ2MmY5MjUxNWZlMDMwOTY5YTA2IiwidXNlcl9pZCI6IjIifQ.2qIO3M6oZwJbI4q74WwMzFfg8GiZTmk2LL3u9DXHMsk
+### Token lido automaticamente da resposta do login
+@token = {{login.response.body.$.access}}
 
 ### 2. Cadastrar Cliente B2B (Rota Protegida)
 POST http://127.0.0.1:8000/api/clients/
@@ -44,7 +45,7 @@ GET http://127.0.0.1:8000/api/orders/
 Authorization: Bearer {{token}}
 
 ### Variável para armazenar o ID do upload (substitua com o UUID retornado no POST abaixo)
-@upload_id = 6677ddfd-1e68-471b-8e74-67ebe251c6f9
+@upload_id = cole-o-uuid-aqui
 
 ### 6. Enviar Arquivo CSV (Upload Massivo Assíncrono)
 # O boundary funciona como uma "fronteira" para separar os dados do arquivo
