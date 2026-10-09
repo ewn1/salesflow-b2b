@@ -3,8 +3,29 @@ import logging
 from celery import shared_task
 from django.db import transaction
 from .models import CSVUpload, Client, Order
+import unicodedata
 
 logger = logging.getLogger(__name__)
+
+STATUS_MAP = {
+    "pendente": "PENDING",
+    "processando": "PROCESSING",
+    "concluido": "COMPLETED",
+    "cancelado": "CANCELLED",
+}
+
+
+def normalize_status(raw_status):
+    """Translate a CSV status label (e.g. 'Concluído') to the internal value."""
+    ascii_text = (
+        unicodedata.normalize("NFKD", raw_status or "")
+        .encode("ascii", "ignore")
+        .decode()
+    )
+    key = ascii_text.strip().lower()
+    if key not in STATUS_MAP:
+        raise ValueError(f"Unknown order status: {raw_status!r}")
+    return STATUS_MAP[key]
 
 
 @shared_task
@@ -53,7 +74,7 @@ def process_csv_upload(upload_id):
                         defaults={
                             "order_date": row.get("data_pedido"),
                             "total_amount": row.get("valor_pedido"),
-                            "status": row.get("status_pedido"),
+                            "status": normalize_status(row.get("status_pedido")),
                         },
                     )
 
