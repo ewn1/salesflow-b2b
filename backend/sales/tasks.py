@@ -22,6 +22,15 @@ STATUS_MAP = {
     "cancelado": "CANCELLED",
 }
 
+REQUIRED_COLUMNS = (
+    "documento_cliente",
+    "nome_cliente",
+    "numero_pedido",
+    "data_pedido",
+    "valor_pedido",
+    "status_pedido",
+)
+
 DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y")
 
 
@@ -104,8 +113,12 @@ def process_csv_upload(upload_id):
             # Normaliza o nome das colunas para minúsculas e remove espaços em branco extras
             reader = csv.DictReader(f)
             reader.fieldnames = [
-                name.strip().lower() for name in reader.fieldnames if name
+                name.strip().lower() for name in (reader.fieldnames or []) if name
             ]
+
+            missing = [c for c in REQUIRED_COLUMNS if c not in reader.fieldnames]
+            if missing:
+                raise ValueError("Missing required columns: " + ", ".join(missing))
 
             rows = list(reader)
             upload.total_records = len(rows)

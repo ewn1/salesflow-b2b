@@ -181,3 +181,24 @@ def test_import_saves_amount_written_in_brazilian_format(settings, tmp_path):
     upload.refresh_from_db()
     assert upload.error_log == ""
     assert Order.objects.get().total_amount == Decimal("1500.50")
+
+
+@pytest.mark.django_db
+def test_import_fails_with_clear_message_when_required_columns_are_missing(
+    settings, tmp_path
+):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u7", password="x")
+    content = "documento_cliente,nome_cliente\n11111111000191,Acme\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", content.encode("utf-8")),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.status == "FAILED"
+    assert "Missing required columns" in upload.error_log
+    assert "numero_pedido" in upload.error_log
