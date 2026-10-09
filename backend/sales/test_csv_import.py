@@ -70,3 +70,26 @@ def test_import_saves_segment_state_and_category(settings, tmp_path):
     assert client.segment == "Varejo"
     assert client.state == "SP"
     assert Order.objects.get().product_category == "Papelaria"
+
+
+@pytest.mark.django_db
+def test_import_skips_bad_rows_and_reports_them(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u3", password="x")
+    good = "33333333000191,Gama,g@gama.com,1177777777,Varejo,RJ,3001,2026-03-05,100.00,Papelaria,Concluido\n"
+    bad = "44444444000191,Delta,d@delta.com,1166666666,Varejo,MG,4001,2026-03-06,200.00,Papelaria,Atrasado\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", (HEADER + good + bad).encode("utf-8")),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.status == "COMPLETED", upload.error_log
+    assert upload.total_records == 2
+    assert upload.processed_records == 1
+    assert "Line 3" in upload.error_log
+    assert Order.objects.filter(order_number="3001").exists()
+    assert not Order.objects.filter(order_number="4001").exists()

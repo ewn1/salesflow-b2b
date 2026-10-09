@@ -1,9 +1,11 @@
 import csv
 import logging
 from celery import shared_task
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from .models import CSVUpload, Client, Order
 import unicodedata
+
+from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -38,49 +40,63 @@ def process_csv_upload(upload_id):
 
         file_path = upload.file.path
         processed_count = 0
+        errors = []
 
         # utf-8-sig remove o BOM (caractere invisível) caso o arquivo venha do Excel
         with open(file_path, mode="r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
 
             # Normaliza o nome das colunas para minúsculas e remove espaços em branco extras
+            reader = csv.DictReader(f)
             reader.fieldnames = [
                 name.strip().lower() for name in reader.fieldnames if name
             ]
 
-            for row in reader:
-                with transaction.atomic():
+            rows = list(reader)
+            upload.total_records = len(rows)
+            upload.save(update_fields=["total_records"])
 
-                    # === 1. CLIENTE (CLIENT) ===
-                    # Chave de busca (unique_together): user + cnpj_cpf
-                    # Assim garantimos o multitenancy: o CNPJ é único apenas para ESTE usuário
-                    customer, _ = Client.objects.update_or_create(
-                        user=upload.user,
-                        cnpj_cpf=row["documento_cliente"].strip(),
-                        defaults={
-                            "name": row.get("nome_cliente"),
-                            "email": row.get("email_cliente"),
-                            "phone": row.get("telefone_cliente"),
-                            "segment": (row.get("segmento_cliente") or "").strip(),
-                            "state": (row.get("estado_cliente") or "").strip().upper(),
-                        },
-                    )
+            for line_number, row in enumerate(
+                rows, start=2
+            ):  # start=2 para considerar o cabeçalho:
+                try:
+                    with transaction.atomic():
 
-                    # === 2. PEDIDO (ORDER) ===
-                    # O modelo Order NÃO possui o campo 'user', ele é vinculado via 'client'
-                    # Chave de busca (unique_together): client + order_number
-                    Order.objects.update_or_create(
-                        client=customer,
-                        order_number=row.get("numero_pedido").strip(),
-                        defaults={
-                            "order_date": row.get("data_pedido"),
-                            "total_amount": row.get("valor_pedido"),
-                            "status": normalize_status(row.get("status_pedido")),
-                            "product_category": (
-                                row.get("categoria_produto") or ""
-                            ).strip(),
-                        },
-                    )
+                        # === 1. CLIENTE (CLIENT) ===
+                        # Chave de busca (unique_together): user + cnpj_cpf
+                        # Assim garantimos o multitenancy: o CNPJ é único apenas para ESTE usuário
+                        customer, _ = Client.objects.update_or_create(
+                            user=upload.user,
+                            cnpj_cpf=row["documento_cliente"].strip(),
+                            defaults={
+                                "name": row.get("nome_cliente"),
+                                "email": row.get("email_cliente"),
+                                "phone": row.get("telefone_cliente"),
+                                "segment": (row.get("segmento_cliente") or "").strip(),
+                                "state": (row.get("estado_cliente") or "")
+                                .strip()
+                                .upper(),
+                            },
+                        )
+
+                        # === 2. PEDIDO (ORDER) ===
+                        # O modelo Order NÃO possui o campo 'user', ele é vinculado via 'client'
+                        # Chave de busca (unique_together): client + order_number
+                        Order.objects.update_or_create(
+                            client=customer,
+                            order_number=row.get("numero_pedido").strip(),
+                            defaults={
+                                "order_date": row.get("data_pedido"),
+                                "total_amount": row.get("valor_pedido"),
+                                "status": normalize_status(row.get("status_pedido")),
+                                "product_category": (
+                                    row.get("categoria_produto") or ""
+                                ).strip(),
+                            },
+                        )
+                except (ValueError, ValidationError, DatabaseError) as exc:
+                    errors.append(f"Line {line_number}: {exc}")
+                    continue  # Pula para a próxima linha do CSV, sem interromper o processamento
 
                 processed_count += 1
 
@@ -91,13 +107,11 @@ def process_csv_upload(upload_id):
 
         # Finaliza o processamento com sucesso
         upload.processed_records = processed_count
-        upload.total_records = (
-            processed_count  # Atualiza o total também para bater certinho
-        )
+        upload.error_log = "\n".join(errors)
         upload.status = "COMPLETED"
         upload.save()
 
-        return f"Sucesso! {processed_count} linhas processadas."
+        return f"Done: {processed_count} linhas processadas, {len(errors)} linhas com erros."
 
     except Exception as e:
         logger.error(f"Erro no processamento do upload {upload_id}: {str(e)}")
