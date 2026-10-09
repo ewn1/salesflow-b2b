@@ -11,6 +11,8 @@ from clients.models import Client
 from datetime import date
 from django.utils import timezone
 
+from zoneinfo import ZoneInfo
+
 HEADER = (
     "documento_cliente,nome_cliente,email_cliente,telefone_cliente,"
     "segmento_cliente,estado_cliente,numero_pedido,data_pedido,"
@@ -116,3 +118,24 @@ def test_import_parses_brazilian_date_as_aware_datetime(settings, tmp_path):
     order = Order.objects.get()
     assert timezone.is_aware(order.order_date)
     assert timezone.localtime(order.order_date).date() == date(2026, 1, 15)
+
+
+from zoneinfo import ZoneInfo
+
+
+@pytest.mark.django_db
+def test_order_date_keeps_the_same_calendar_day_in_brazil(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u5", password="x")
+    row = "66666666000191,Zeta,z@zeta.com,1144444444,Varejo,SP,6001,15/01/2026,80.00,Papelaria,Concluido\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", (HEADER + row).encode("utf-8")),
+    )
+
+    process_csv_upload(upload.id)
+
+    order = Order.objects.get()
+    sao_paulo = order.order_date.astimezone(ZoneInfo("America/Sao_Paulo"))
+    assert sao_paulo.date() == date(2026, 1, 15)
