@@ -12,3 +12,4 @@ frontend/dist/
 frontend/.env
 
 .env
+.vscode/
