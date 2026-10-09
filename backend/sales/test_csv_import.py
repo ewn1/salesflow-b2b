@@ -202,3 +202,31 @@ def test_import_fails_with_clear_message_when_required_columns_are_missing(
     assert upload.status == "FAILED"
     assert "Missing required columns" in upload.error_log
     assert "numero_pedido" in upload.error_log
+
+
+@pytest.mark.django_db
+def test_import_rejects_rows_with_missing_required_values(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u8", password="x")
+    good = "88888888000191,Ok Ltda,ok@x.com,1100000000,Varejo,SP,8001,2026-05-01,10.00,Papelaria,Concluido\n"
+    no_doc = ",Sem Doc,s@x.com,1100000000,Varejo,SP,8002,2026-05-02,10.00,Papelaria,Concluido\n"
+    no_number = "77777777000191,Sem Numero,n@x.com,1100000000,Varejo,SP,,2026-05-03,10.00,Papelaria,Concluido\n"
+    short = "66666666000191,Curta\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile(
+            "t.csv", (HEADER + good + no_doc + no_number + short).encode("utf-8")
+        ),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.status == "COMPLETED", upload.error_log
+    assert upload.total_records == 4
+    assert upload.processed_records == 1
+    assert "Line 3" in upload.error_log
+    assert "Line 4" in upload.error_log
+    assert "Line 5" in upload.error_log
+    assert not Client.objects.filter(cnpj_cpf="").exists()
