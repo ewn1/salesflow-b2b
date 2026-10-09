@@ -1,5 +1,6 @@
 import csv
 import logging
+import re
 from celery import shared_task
 from django.db import DatabaseError, transaction
 from .models import CSVUpload, Client, Order
@@ -9,6 +10,8 @@ from django.core.exceptions import ValidationError
 
 from datetime import datetime
 from django.utils import timezone
+
+from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +48,41 @@ def parse_order_date(raw_date):
             continue
         return timezone.make_aware(parsed)
     raise ValueError(f"Invalid date {raw_date!r}; use YYYY-MM-DD or DD/MM/YYYY")
+
+
+def parse_order_amount(raw_amount):
+    """Parse a CSV amount ('1500.50', '1500,50', '1.500,50') into a Decimal."""
+    text = (raw_amount or "").strip()
+    if not re.fullmatch(r"\d[\d.,]*", text):
+        raise ValueError(f"Invalid amount {raw_amount!r}")
+
+    last_dot = text.rfind(".")
+    last_comma = text.rfind(",")
+
+    decimal_sep = None
+    if last_dot != -1 and last_comma != -1:
+        # Ambos separadores existem, o último é o separador decimal
+        decimal_sep = "." if last_dot > last_comma else ","
+    elif last_dot != -1 or last_comma != -1:
+        sep = "." if last_dot != -1 else ","
+        if text.count(sep) == 1:
+            digits_after = len(text) - text.rfind(sep) - 1
+            if digits_after == 3:
+                raise ValueError(f"Ambiguous amount {raw_amount!r}")
+            decimal_sep = sep
+        # Se o mesmo separador se repetir ('1.234.567'), trata-se de um separador de milhares.
+
+    if decimal_sep:
+        integer_part, _, fraction = text.rpartition(decimal_sep)
+        digits = integer_part.replace(".", "").replace(",", "")
+        normalized = f"{digits}.{fraction}"
+    else:
+        normalized = text.replace(".", "").replace(",", "")
+
+    try:
+        return Decimal(normalized)
+    except InvalidOperation:
+        raise ValueError(f"Invalid amount {raw_amount!r}")
 
 
 @shared_task
@@ -104,7 +142,9 @@ def process_csv_upload(upload_id):
                             order_number=row.get("numero_pedido").strip(),
                             defaults={
                                 "order_date": parse_order_date(row.get("data_pedido")),
-                                "total_amount": row.get("valor_pedido"),
+                                "total_amount": parse_order_amount(
+                                    row.get("valor_pedido")
+                                ),
                                 "status": normalize_status(row.get("status_pedido")),
                                 "product_category": (
                                     row.get("categoria_produto") or ""

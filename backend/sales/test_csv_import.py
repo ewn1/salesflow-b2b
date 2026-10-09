@@ -5,13 +5,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from sales.models import CSVUpload, Order
 from sales.tasks import process_csv_upload
 from sales.tasks import normalize_status
-
 from clients.models import Client
 
 from datetime import date
 from django.utils import timezone
-
 from zoneinfo import ZoneInfo
+from decimal import Decimal
 
 HEADER = (
     "documento_cliente,nome_cliente,email_cliente,telefone_cliente,"
@@ -139,3 +138,46 @@ def test_order_date_keeps_the_same_calendar_day_in_brazil(settings, tmp_path):
     order = Order.objects.get()
     sao_paulo = order.order_date.astimezone(ZoneInfo("America/Sao_Paulo"))
     assert sao_paulo.date() == date(2026, 1, 15)
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("1500.50", Decimal("1500.50")),
+        ("1500,50", Decimal("1500.50")),
+        ("1.500,50", Decimal("1500.50")),
+        ("1,500.50", Decimal("1500.50")),
+        ("1500", Decimal("1500")),
+        ("  250.00 ", Decimal("250.00")),
+    ],
+)
+def test_parse_order_amount_accepts_common_formats(raw, expected):
+    from sales.tasks import parse_order_amount
+
+    assert parse_order_amount(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["1.500", "1,500", "abc", "", "12,3x"])
+def test_parse_order_amount_rejects_ambiguous_or_invalid(raw):
+    from sales.tasks import parse_order_amount
+
+    with pytest.raises(ValueError):
+        parse_order_amount(raw)
+
+
+@pytest.mark.django_db
+def test_import_saves_amount_written_in_brazilian_format(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u6", password="x")
+    row = '77777777000191,Eta,e@eta.com,1133333333,Varejo,RS,7001,2026-04-01,"1.500,50",Papelaria,Concluido\n'
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", (HEADER + row).encode("utf-8")),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.error_log == ""
+    assert Order.objects.get().total_amount == Decimal("1500.50")
