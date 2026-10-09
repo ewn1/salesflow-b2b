@@ -35,7 +35,7 @@ DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y")
 
 
 def normalize_status(raw_status):
-    """Translate a CSV status label (e.g. 'Concluído') to the internal value."""
+    """Translate a CSV status label (e.g. 'Concluído') into the internal value."""
     ascii_text = (
         unicodedata.normalize("NFKD", raw_status or "")
         .encode("ascii", "ignore")
@@ -48,7 +48,7 @@ def normalize_status(raw_status):
 
 
 def parse_order_date(raw_date):
-    """Parse a CSV date (YYYY-MM-DD or DD/MM/YYYY) into an aware datetime."""
+    """Parse a CSV date (YYYY-MM-DD or DD/MM/YYYY) into a timezone-aware datetime."""
     text = (raw_date or "").strip()
     for date_format in DATE_FORMATS:
         try:
@@ -70,7 +70,7 @@ def parse_order_amount(raw_amount):
 
     decimal_sep = None
     if last_dot != -1 and last_comma != -1:
-        # Ambos separadores existem, o último é o separador decimal
+        # Both separators present: the last one is the decimal separator.
         decimal_sep = "." if last_dot > last_comma else ","
     elif last_dot != -1 or last_comma != -1:
         sep = "." if last_dot != -1 else ","
@@ -79,7 +79,7 @@ def parse_order_amount(raw_amount):
             if digits_after == 3:
                 raise ValueError(f"Ambiguous amount {raw_amount!r}")
             decimal_sep = sep
-        # Se o mesmo separador se repetir ('1.234.567'), trata-se de um separador de milhares.
+        # A repeated separator ('1.234.567') is a thousands separator.
 
     if decimal_sep:
         integer_part, _, fraction = text.rpartition(decimal_sep)
@@ -94,10 +94,18 @@ def parse_order_amount(raw_amount):
         raise ValueError(f"Invalid amount {raw_amount!r}")
 
 
+def get_required(row, column):
+    """Return the stripped value of a required column or raise ValueError."""
+    value = (row.get(column) or "").strip()
+    if not value:
+        raise ValueError(f"Missing value for '{column}'")
+    return value
+
+
 @shared_task
 def process_csv_upload(upload_id):
     try:
-        # Busca o registro do upload e muda o status para PROCESSANDO
+        # Fetch the upload record and mark it as PROCESSING
         upload = CSVUpload.objects.get(id=upload_id)
         upload.status = "PROCESSING"
         upload.save(update_fields=["status"])
@@ -106,11 +114,10 @@ def process_csv_upload(upload_id):
         processed_count = 0
         errors = []
 
-        # utf-8-sig remove o BOM (caractere invisível) caso o arquivo venha do Excel
+        # utf-8-sig strips the BOM (invisible character) that Excel may add
         with open(file_path, mode="r", encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
 
-            # Normaliza o nome das colunas para minúsculas e remove espaços em branco extras
+            # Normalize column names: lowercase and strip extra whitespace
             reader = csv.DictReader(f)
             reader.fieldnames = [
                 name.strip().lower() for name in (reader.fieldnames or []) if name
@@ -124,22 +131,22 @@ def process_csv_upload(upload_id):
             upload.total_records = len(rows)
             upload.save(update_fields=["total_records"])
 
-            for line_number, row in enumerate(
-                rows, start=2
-            ):  # start=2 para considerar o cabeçalho:
+            # start=2: line 1 of the file is the header, so data begins on line 2
+            for line_number, row in enumerate(rows, start=2):
                 try:
                     with transaction.atomic():
 
-                        # === 1. CLIENTE (CLIENT) ===
-                        # Chave de busca (unique_together): user + cnpj_cpf
-                        # Assim garantimos o multitenancy: o CNPJ é único apenas para ESTE usuário
+                        # === 1. CLIENT ===
+                        # Lookup key (unique_together): user + cnpj_cpf
+                        # Per-user isolation: the same CNPJ/CPF may exist in
+                        # different accounts, but only once within this user's clients
                         customer, _ = Client.objects.update_or_create(
                             user=upload.user,
-                            cnpj_cpf=row["documento_cliente"].strip(),
+                            cnpj_cpf=get_required(row, "documento_cliente"),
                             defaults={
-                                "name": row.get("nome_cliente"),
-                                "email": row.get("email_cliente"),
-                                "phone": row.get("telefone_cliente"),
+                                "name": get_required(row, "nome_cliente"),
+                                "email": (row.get("email_cliente") or "").strip(),
+                                "phone": (row.get("telefone_cliente") or "").strip(),
                                 "segment": (row.get("segmento_cliente") or "").strip(),
                                 "state": (row.get("estado_cliente") or "")
                                 .strip()
@@ -147,12 +154,12 @@ def process_csv_upload(upload_id):
                             },
                         )
 
-                        # === 2. PEDIDO (ORDER) ===
-                        # O modelo Order NÃO possui o campo 'user', ele é vinculado via 'client'
-                        # Chave de busca (unique_together): client + order_number
+                        # === 2. ORDER ===
+                        # Order has no 'user' field; it belongs to a user through its client
+                        # Lookup key (unique_together): client + order_number
                         Order.objects.update_or_create(
                             client=customer,
-                            order_number=row.get("numero_pedido").strip(),
+                            order_number=get_required(row, "numero_pedido"),
                             defaults={
                                 "order_date": parse_order_date(row.get("data_pedido")),
                                 "total_amount": parse_order_amount(
@@ -166,26 +173,29 @@ def process_csv_upload(upload_id):
                         )
                 except (ValueError, ValidationError, DatabaseError) as exc:
                     errors.append(f"Line {line_number}: {exc}")
-                    continue  # Pula para a próxima linha do CSV, sem interromper o processamento
+                    continue  # Skip to the next CSV line without aborting the import
 
                 processed_count += 1
 
-                # A cada 100 registros, atualiza o progresso no banco de dados
+                # Every 100 records, persist progress to the database
                 if processed_count % 100 == 0:
                     upload.processed_records = processed_count
                     upload.save(update_fields=["processed_records"])
 
-        # Finaliza o processamento com sucesso
+        # Finish: persist the final count and the per-row error report
         upload.processed_records = processed_count
         upload.error_log = "\n".join(errors)
         upload.status = "COMPLETED"
         upload.save()
 
-        return f"Done: {processed_count} linhas processadas, {len(errors)} linhas com erros."
+        return (
+            f"Done: {processed_count} rows processed, {len(errors)} rows with errors."
+        )
 
     except Exception as e:
-        logger.error(f"Erro no processamento do upload {upload_id}: {str(e)}")
-        # Se ocorrer qualquer erro crítico, falha a task inteira e salva o log
+        logger.error(f"Error processing upload {upload_id}: {str(e)}")
+        # File-level failure (unreadable file, missing columns, bug):
+        # fail the whole task and store the message in the error log
         if "upload" in locals():
             upload.status = "FAILED"
             upload.error_log = str(e)
