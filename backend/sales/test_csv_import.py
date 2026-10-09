@@ -6,6 +6,8 @@ from sales.models import CSVUpload, Order
 from sales.tasks import process_csv_upload
 from sales.tasks import normalize_status
 
+from clients.models import Client
+
 HEADER = (
     "documento_cliente,nome_cliente,email_cliente,telefone_cliente,"
     "segmento_cliente,estado_cliente,numero_pedido,data_pedido,"
@@ -47,3 +49,24 @@ def test_normalize_status_accepts_variations(raw, expected):
 def test_normalize_status_rejects_unknown_value():
     with pytest.raises(ValueError):
         normalize_status("Atrasado")
+
+
+@pytest.mark.django_db
+def test_import_saves_segment_state_and_category(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u2", password="x")
+    row = "22222222000191,Beta,b@beta.com,1188888888,Varejo,SP,2001,2026-02-10,300.00,Papelaria,Pendente\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", (HEADER + row).encode("utf-8")),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.status == "COMPLETED", upload.error_log
+    client = Client.objects.get(user=user)
+    assert client.segment == "Varejo"
+    assert client.state == "SP"
+    assert Order.objects.get().product_category == "Papelaria"

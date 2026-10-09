@@ -4,6 +4,7 @@ backend/__pycache__/
 backend/*.pyc
 backend/db.sqlite3
 backend/.env
+backend/.pytest_cache/
 
 # Node/React
 frontend/node_modules/

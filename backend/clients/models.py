@@ -11,6 +11,8 @@ class Client(models.Model):
     company_name = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    segment = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=2, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

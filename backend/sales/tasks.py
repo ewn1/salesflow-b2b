@@ -61,7 +61,8 @@ def process_csv_upload(upload_id):
                             "name": row.get("nome_cliente"),
                             "email": row.get("email_cliente"),
                             "phone": row.get("telefone_cliente"),
-                            # Segmento e estado omitidos pois não estão no models.py atualmente.
+                            "segment": (row.get("segmento_cliente") or "").strip(),
+                            "state": (row.get("estado_cliente") or "").strip().upper(),
                         },
                     )
 
@@ -75,6 +76,9 @@ def process_csv_upload(upload_id):
                             "order_date": row.get("data_pedido"),
                             "total_amount": row.get("valor_pedido"),
                             "status": normalize_status(row.get("status_pedido")),
+                            "product_category": (
+                                row.get("categoria_produto") or ""
+                            ).strip(),
                         },
                     )
 

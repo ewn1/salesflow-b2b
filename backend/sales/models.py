@@ -19,6 +19,7 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
     order_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+    product_category = models.CharField(max_length=100, blank=True)
 
     class Meta:
         ordering = ["-order_date"]
