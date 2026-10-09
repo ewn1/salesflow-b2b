@@ -7,6 +7,9 @@ import unicodedata
 
 from django.core.exceptions import ValidationError
 
+from datetime import datetime
+from django.utils import timezone
+
 logger = logging.getLogger(__name__)
 
 STATUS_MAP = {
@@ -15,6 +18,8 @@ STATUS_MAP = {
     "concluido": "COMPLETED",
     "cancelado": "CANCELLED",
 }
+
+DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y")
 
 
 def normalize_status(raw_status):
@@ -28,6 +33,18 @@ def normalize_status(raw_status):
     if key not in STATUS_MAP:
         raise ValueError(f"Unknown order status: {raw_status!r}")
     return STATUS_MAP[key]
+
+
+def parse_order_date(raw_date):
+    """Parse a CSV date (YYYY-MM-DD or DD/MM/YYYY) into an aware datetime."""
+    text = (raw_date or "").strip()
+    for date_format in DATE_FORMATS:
+        try:
+            parsed = datetime.strptime(text, date_format)
+        except ValueError:
+            continue
+        return timezone.make_aware(parsed)
+    raise ValueError(f"Invalid date {raw_date!r}; use YYYY-MM-DD or DD/MM/YYYY")
 
 
 @shared_task
@@ -86,7 +103,7 @@ def process_csv_upload(upload_id):
                             client=customer,
                             order_number=row.get("numero_pedido").strip(),
                             defaults={
-                                "order_date": row.get("data_pedido"),
+                                "order_date": parse_order_date(row.get("data_pedido")),
                                 "total_amount": row.get("valor_pedido"),
                                 "status": normalize_status(row.get("status_pedido")),
                                 "product_category": (

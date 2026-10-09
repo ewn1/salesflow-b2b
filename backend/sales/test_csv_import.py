@@ -8,6 +8,9 @@ from sales.tasks import normalize_status
 
 from clients.models import Client
 
+from datetime import date
+from django.utils import timezone
+
 HEADER = (
     "documento_cliente,nome_cliente,email_cliente,telefone_cliente,"
     "segmento_cliente,estado_cliente,numero_pedido,data_pedido,"
@@ -93,3 +96,23 @@ def test_import_skips_bad_rows_and_reports_them(settings, tmp_path):
     assert "Line 3" in upload.error_log
     assert Order.objects.filter(order_number="3001").exists()
     assert not Order.objects.filter(order_number="4001").exists()
+
+
+@pytest.mark.django_db
+def test_import_parses_brazilian_date_as_aware_datetime(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u4", password="x")
+    row = "55555555000191,Epsilon,e@eps.com,1155555555,Varejo,BA,5001,15/01/2026,250.00,Papelaria,Concluido\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", (HEADER + row).encode("utf-8")),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.error_log == ""
+    order = Order.objects.get()
+    assert timezone.is_aware(order.order_date)
+    assert timezone.localtime(order.order_date).date() == date(2026, 1, 15)
