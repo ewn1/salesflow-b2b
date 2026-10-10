@@ -1,3 +1,4 @@
+import io
 import csv
 import logging
 import re
@@ -102,6 +103,29 @@ def get_required(row, column):
     return value
 
 
+def read_csv_text(file_path):
+    """Read a CSV file as text, accepting UTF-8 (with or without BOM) and Windows-1252."""
+    with open(file_path, "rb") as f:
+        raw = f.read()
+    try:
+        # utf-8-sig also strips the BOM (invisible character) that Excel may add
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        pass
+    try:
+        return raw.decode("cp1252")
+    except UnicodeDecodeError:
+        raise ValueError(
+            "Unsupported file encoding; save the file as UTF-8 or Windows-1252"
+        )
+
+
+def detect_delimiter(text):
+    """Pick ';' (Excel in pt-BR) or ',' by looking at the header line."""
+    header_line = text.split("\n", 1)[0]
+    return ";" if header_line.count(";") > header_line.count(",") else ","
+
+
 @shared_task
 def process_csv_upload(upload_id):
     try:
@@ -114,11 +138,12 @@ def process_csv_upload(upload_id):
         processed_count = 0
         errors = []
 
-        # utf-8-sig strips the BOM (invisible character) that Excel may add
-        with open(file_path, mode="r", encoding="utf-8-sig") as f:
+        text = read_csv_text(file_path)
+
+        with io.StringIO(text) as f:
 
             # Normalize column names: lowercase and strip extra whitespace
-            reader = csv.DictReader(f)
+            reader = csv.DictReader(f, delimiter=detect_delimiter(text))
             reader.fieldnames = [
                 name.strip().lower() for name in (reader.fieldnames or []) if name
             ]

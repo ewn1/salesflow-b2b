@@ -230,3 +230,41 @@ def test_import_rejects_rows_with_missing_required_values(settings, tmp_path):
     assert "Line 4" in upload.error_log
     assert "Line 5" in upload.error_log
     assert not Client.objects.filter(cnpj_cpf="").exists()
+
+
+@pytest.mark.django_db
+def test_import_accepts_semicolon_delimited_file(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u9", password="x")
+    header = HEADER.replace(",", ";")
+    row = "99999999000191;Ponto e Virgula;pv@x.com;1100000000;Varejo;SP;9001;15/01/2026;1.500,50;Papelaria;Concluido\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", (header + row).encode("utf-8")),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.status == "COMPLETED", upload.error_log
+    assert upload.error_log == ""
+    assert Order.objects.get().total_amount == Decimal("1500.50")
+
+
+@pytest.mark.django_db
+def test_import_accepts_windows_1252_encoded_file(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+
+    user = get_user_model().objects.create_user(username="u10", password="x")
+    row = "10101010000191,Açaí Ltda,a@acai.com,1100000000,Varejo,SP,10001,2026-01-15,50.00,Papelaria,Concluido\n"
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", (HEADER + row).encode("cp1252")),
+    )
+
+    process_csv_upload(upload.id)
+
+    upload.refresh_from_db()
+    assert upload.status == "COMPLETED", upload.error_log
+    assert Client.objects.get(user=user).name == "Açaí Ltda"
