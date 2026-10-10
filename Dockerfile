@@ -17,9 +17,9 @@ RUN apt-get update && apt-get install -y \
 # Atualiza o pip para a versão mais recente
 RUN pip install --no-cache-dir --upgrade pip
 
-# Copia e instala as depências do projeto a partir do arquivo requirements.txt
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copia e instala as depências do projeto a partir do arquivo requirements.txt e requirements-dev.txt
+COPY backend/requirements.txt backend/requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Copia o restante do código  do backend para dentro do container
 COPY backend/ .
