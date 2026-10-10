@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 class Client(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="clients")
     name = models.CharField(max_length=255)
-    email = models.EmailField()
+    email = models.EmailField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     cnpj_cpf = models.CharField(max_length=20)
     company_name = models.CharField(max_length=255, blank=True, null=True)

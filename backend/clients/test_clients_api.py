@@ -62,3 +62,16 @@ def test_editing_a_client_does_not_collide_with_itself():
 
     assert response.status_code == 200, response.data
     assert response.data["name"] == "Acme Ltda"
+
+
+@pytest.mark.django_db
+def test_client_can_be_created_without_email():
+    alice = User.objects.create_user(username="alice", password="x")
+
+    response = api_for(alice).post(
+        "/api/clients/",
+        {"name": "No Email Ltda", "cnpj_cpf": "55555555000191"},
+        format="json",
+    )
+
+    assert response.status_code == 201, response.data
