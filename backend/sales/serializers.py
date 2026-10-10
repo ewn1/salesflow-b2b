@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Order
 from .models import CSVUpload
+from clients.models import Client
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -8,6 +9,16 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = "__all__"
         read_only_fields = ["id", "created_at"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            fields["client"].queryset = Client.objects.filter(user=user)
+        else:
+            fields["client"].queryset = Client.objects.none()
+        return fields
 
 
 class CSVUploadSerializer(serializers.ModelSerializer):
