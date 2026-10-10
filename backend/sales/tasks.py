@@ -126,6 +126,16 @@ def detect_delimiter(text):
     return ";" if header_line.count(";") > header_line.count(",") else ","
 
 
+def normalize_document(raw_document):
+    """Keep only the digits of a CPF/CNPJ and check its length (11 or 14)."""
+    digits = re.sub(r"\D", "", raw_document or "")
+    if len(digits) not in (11, 14):
+        raise ValueError(
+            f"Invalid document {raw_document!r}: expected 11 (CPF) or 14 (CNPJ) digits"
+        )
+    return digits
+
+
 @shared_task
 def process_csv_upload(upload_id):
     try:
@@ -167,7 +177,9 @@ def process_csv_upload(upload_id):
                         # different accounts, but only once within this user's clients
                         customer, _ = Client.objects.update_or_create(
                             user=upload.user,
-                            cnpj_cpf=get_required(row, "documento_cliente"),
+                            cnpj_cpf=normalize_document(
+                                get_required(row, "documento_cliente")
+                            ),
                             defaults={
                                 "name": get_required(row, "nome_cliente"),
                                 "email": (row.get("email_cliente") or "").strip(),

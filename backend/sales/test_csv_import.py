@@ -19,6 +19,18 @@ HEADER = (
 )
 
 
+def import_rows(user, *rows):
+    """Upload a CSV made of HEADER + the given rows and run the import."""
+    content = HEADER + "".join(rows)
+    upload = CSVUpload.objects.create(
+        user=user,
+        file=SimpleUploadedFile("t.csv", content.encode("utf-8")),
+    )
+    process_csv_upload(upload.id)
+    upload.refresh_from_db()
+    return upload
+
+
 @pytest.mark.django_db
 def test_import_maps_portuguese_status_to_internal_value(settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path  # arquivo de teste vai para pasta temporária
@@ -268,3 +280,75 @@ def test_import_accepts_windows_1252_encoded_file(settings, tmp_path):
     upload.refresh_from_db()
     assert upload.status == "COMPLETED", upload.error_log
     assert Client.objects.get(user=user).name == "Açaí Ltda"
+
+
+@pytest.mark.django_db
+def test_importing_the_same_file_twice_does_not_duplicate_data(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    user = get_user_model().objects.create_user(username="u11", password="x")
+    row = "12121212000191,Repetida,r@x.com,1100000000,Varejo,SP,11001,2026-06-01,100.00,Papelaria,Pendente\n"
+    changed = "12121212000191,Repetida,r@x.com,1100000000,Varejo,SP,11001,2026-06-01,250.00,Papelaria,Concluido\n"
+
+    import_rows(user, row)
+    second = import_rows(user, row)
+    assert second.error_log == ""
+    assert Client.objects.filter(user=user).count() == 1
+    assert Order.objects.filter(client__user=user).count() == 1
+
+    import_rows(user, changed)
+    order = Order.objects.get(client__user=user)
+    assert order.total_amount == Decimal("250.00")
+    assert order.status == "COMPLETED"
+
+
+@pytest.mark.django_db
+def test_same_document_in_two_accounts_stays_isolated(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    user_a = get_user_model().objects.create_user(username="ua", password="x")
+    user_b = get_user_model().objects.create_user(username="ub", password="x")
+    row_a = "13131313000191,Alfa,a@x.com,1100000000,Varejo,SP,12001,2026-06-01,10.00,Papelaria,Pendente\n"
+    row_b = "13131313000191,Beta,b@x.com,1100000000,Varejo,RJ,12001,2026-06-01,99.00,Papelaria,Pendente\n"
+
+    import_rows(user_a, row_a)
+    import_rows(user_b, row_b)
+
+    assert Client.objects.filter(cnpj_cpf="13131313000191").count() == 2
+    assert Client.objects.get(user=user_a).name == "Alfa"
+    assert Client.objects.get(user=user_b).name == "Beta"
+    assert Order.objects.get(client__user=user_a).total_amount == Decimal("10.00")
+
+
+@pytest.mark.django_db
+def test_document_with_punctuation_matches_the_same_client(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    user = get_user_model().objects.create_user(username="u12", password="x")
+    punctuated = "11.111.111/0001-91,Mascarada,m@x.com,1100000000,Varejo,SP,13001,2026-06-01,10.00,Papelaria,Pendente\n"
+    plain = "11111111000191,Mascarada,m@x.com,1100000000,Varejo,SP,13002,2026-06-02,20.00,Papelaria,Pendente\n"
+
+    upload = import_rows(user, punctuated, plain)
+
+    assert upload.error_log == ""
+    assert Client.objects.filter(user=user).count() == 1
+    assert Client.objects.get(user=user).cnpj_cpf == "11111111000191"
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("11.111.111/0001-91", "11111111000191"),
+        ("111.444.777-35", "11144477735"),
+        (" 11111111000191 ", "11111111000191"),
+    ],
+)
+def test_normalize_document_keeps_only_digits(raw, expected):
+    from sales.tasks import normalize_document
+
+    assert normalize_document(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["123", "abc", "1111111100019"])
+def test_normalize_document_rejects_invalid_length(raw):
+    from sales.tasks import normalize_document
+
+    with pytest.raises(ValueError):
+        normalize_document(raw)
