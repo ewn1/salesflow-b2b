@@ -2,17 +2,15 @@ import io
 import csv
 import logging
 import re
+import unicodedata
 from celery import shared_task
 from django.db import DatabaseError, transaction
-from .models import CSVUpload, Client, Order
-import unicodedata
-
 from django.core.exceptions import ValidationError
-
-from datetime import datetime
 from django.utils import timezone
-
+from .models import CSVUpload, Client, Order
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from clients.documents import normalize_document
 
 logger = logging.getLogger(__name__)
 
@@ -124,16 +122,6 @@ def detect_delimiter(text):
     """Pick ';' (Excel in pt-BR) or ',' by looking at the header line."""
     header_line = text.split("\n", 1)[0]
     return ";" if header_line.count(";") > header_line.count(",") else ","
-
-
-def normalize_document(raw_document):
-    """Keep only the digits of a CPF/CNPJ and check its length (11 or 14)."""
-    digits = re.sub(r"\D", "", raw_document or "")
-    if len(digits) not in (11, 14):
-        raise ValueError(
-            f"Invalid document {raw_document!r}: expected 11 (CPF) or 14 (CNPJ) digits"
-        )
-    return digits
 
 
 @shared_task

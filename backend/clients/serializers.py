@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Client
+from .documents import normalize_document
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -25,6 +26,11 @@ class ClientSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "user", "created_at", "updated_at"]
 
     def validate_cnpj_cpf(self, value):
+        try:
+            value = normalize_document(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc))
+
         user = self.context["request"].user
         duplicates = Client.objects.filter(user=user, cnpj_cpf=value)
         if self.instance is not None:

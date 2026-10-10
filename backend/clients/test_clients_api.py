@@ -12,6 +12,10 @@ def api_for(user):
     return api
 
 
+def client_payload(document):
+    return {"name": "Acme", "email": "acme@example.com", "cnpj_cpf": document}
+
+
 @pytest.mark.django_db
 def test_duplicate_document_for_same_user_returns_400():
     alice = User.objects.create_user(username="alice", password="x")
@@ -75,3 +79,41 @@ def test_client_can_be_created_without_email():
     )
 
     assert response.status_code == 201, response.data
+
+
+@pytest.mark.django_db
+def test_api_stores_document_with_digits_only():
+    alice = User.objects.create_user(username="alice", password="x")
+
+    response = api_for(alice).post(
+        "/api/clients/", client_payload("44.444.444/0001-91"), format="json"
+    )
+
+    assert response.status_code == 201, response.data
+    assert response.data["cnpj_cpf"] == "44444444000191"
+
+
+@pytest.mark.django_db
+def test_api_rejects_punctuated_duplicate_of_existing_document():
+    alice = User.objects.create_user(username="alice", password="x")
+    api = api_for(alice)
+    first = api.post("/api/clients/", client_payload("44444444000191"), format="json")
+    assert first.status_code == 201, first.data
+
+    second = api.post(
+        "/api/clients/", client_payload("44.444.444/0001-91"), format="json"
+    )
+
+    assert second.status_code == 400
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("document", ["123", "abc", "1111111100019"])
+def test_api_rejects_document_with_invalid_length(document):
+    alice = User.objects.create_user(username="alice", password="x")
+
+    response = api_for(alice).post(
+        "/api/clients/", client_payload(document), format="json"
+    )
+
+    assert response.status_code == 400
