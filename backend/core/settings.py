@@ -164,3 +164,6 @@ import os
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# Maximum accepted size for uploaded CSV files (5 MB)
+CSV_UPLOAD_MAX_BYTES = 5 * 1024 * 1024

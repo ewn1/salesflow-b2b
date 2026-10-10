@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Order
 from .models import CSVUpload
 from clients.models import Client
+from django.conf import settings
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -45,8 +46,12 @@ class CSVUploadSerializer(serializers.ModelSerializer):
         ]
 
     def validate_file(self, value):
-        if not value.name.endswith(".csv"):
+        if not value.name.lower().endswith(".csv"):
             raise serializers.ValidationError(
-                "Extensão inválida. Envie apenas arquivos com formato .csv."
+                "Invalid extension. Upload only .csv files."
+            )
+        if value.size > settings.CSV_UPLOAD_MAX_BYTES:
+            raise serializers.ValidationError(
+                f"File too large. Maximum size is {settings.CSV_UPLOAD_MAX_BYTES} bytes."
             )
         return value

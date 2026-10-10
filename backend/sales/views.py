@@ -8,6 +8,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 from .tasks import process_csv_upload
 from django.shortcuts import get_object_or_404
+import uuid
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -31,16 +32,16 @@ class CSVUploadView(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = CSVUploadSerializer(data=request.data)
+
         if serializer.is_valid():
-            # Salva o arquivo vinculando ao usuário autenticado (multitenancy)
-            upload_instance = serializer.save(user=request.user)
-
-            # disparo para o celery, o .delay() joga o trabalho para a fila no Redis e libera o Django imediatamente
-            process_csv_upload.delay(upload_instance.id)
-
+            # Pre-generate the task id so it is saved BEFORE the task is queued
+            task_id = str(uuid.uuid4())
+            # Per-user isolation: each user can only see their own uploads, so we save the user in the model
+            upload_instance = serializer.save(user=request.user, task_id=task_id)
+            process_csv_upload.apply_async(args=[upload_instance.id], task_id=task_id)
             return Response(
                 {
-                    "message": "Arquivo recebido com sucesso. O processamento foi iniciado em segundo plano.",
+                    "message": "File received. Processing started.",
                     "upload_id": upload_instance.id,
                     "status": upload_instance.status,
                 },
