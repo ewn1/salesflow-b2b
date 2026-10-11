@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Client
+
 from .documents import normalize_document
+from .models import Client
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -22,14 +23,15 @@ class ClientSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        # Garante que o usuário logado não precise enviar o seu próprio ID no payload JSON, pois ele será automaticamente associado ao cliente criado.
+        # 'user' is set from the authenticated request,
+        # so clients must not send it in the payload.
         read_only_fields = ["id", "user", "created_at", "updated_at"]
 
     def validate_cnpj_cpf(self, value):
         try:
             value = normalize_document(value)
         except ValueError as exc:
-            raise serializers.ValidationError(str(exc))
+            raise serializers.ValidationError(str(exc)) from exc
 
         user = self.context["request"].user
         duplicates = Client.objects.filter(user=user, cnpj_cpf=value)

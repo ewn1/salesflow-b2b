@@ -1,14 +1,14 @@
-from rest_framework import viewsets, permissions, status
-from .models import Order, CSVUpload
-from .serializers import OrderSerializer, CSVUploadSerializer
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
-
-from .tasks import process_csv_upload
-from django.shortcuts import get_object_or_404
 import uuid
+
+from django.shortcuts import get_object_or_404
+from rest_framework import permissions, status, viewsets
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import CSVUpload, Order
+from .serializers import CSVUploadSerializer, OrderSerializer
+from .tasks import process_csv_upload
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -36,7 +36,7 @@ class CSVUploadView(APIView):
         if serializer.is_valid():
             # Pre-generate the task id so it is saved BEFORE the task is queued
             task_id = str(uuid.uuid4())
-            # Per-user isolation: each user can only see their own uploads, so we save the user in the model
+            # Per-user isolation: the upload is saved with its owner
             upload_instance = serializer.save(user=request.user, task_id=task_id)
             process_csv_upload.apply_async(args=[upload_instance.id], task_id=task_id)
             return Response(

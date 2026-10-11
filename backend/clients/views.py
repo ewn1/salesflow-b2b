@@ -1,4 +1,5 @@
-from rest_framework import viewsets, permissions
+from rest_framework import permissions, viewsets
+
 from .models import Client
 from .serializers import ClientSerializer
 
@@ -20,6 +21,6 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Injeta automaticamente o usuário autenticado na requisição antes de salvar no banco.
+        Automatically set the authenticated user as the owner before saving.
         """
         serializer.save(user=self.request.user)

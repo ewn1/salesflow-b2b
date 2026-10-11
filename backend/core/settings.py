@@ -10,8 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
-from pathlib import Path
 import os
+from datetime import timedelta
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -138,9 +139,8 @@ MAILERS = {
     },
 }
 
-### CONFIGURAÇÃO DO DRF PARA EXIGIR JWT EM TODAS AS REQUISIÇÕES, ###
-### COM TEMPO DE EXPIRAÇÃO DE 60 MINUTOS PARA O ACCESS TOKEN E 1 DIA PARA O REFRESH TOKEN ###
-from datetime import timedelta
+### DRF CONFIG: REQUIRE JWT ON EVERY REQUEST ###
+### ACCESS TOKEN EXPIRES IN 60 MINUTES, REFRESH TOKEN IN 1 DAY ###
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -159,9 +159,8 @@ SIMPLE_JWT = {
 # Configurações do Celery apontando para o container do Redis
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
-# Configuração para armazenamento temporário de arquivos CSV evniado pelo usuário, para que o Celery possa processá-los
-import os
 
+# Temporary storage for CSV files uploaded by users, so Celery can process them
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 

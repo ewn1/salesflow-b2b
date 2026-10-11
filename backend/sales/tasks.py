@@ -1,16 +1,19 @@
-import io
 import csv
+import io
 import logging
 import re
 import unicodedata
-from celery import shared_task
-from django.db import DatabaseError, transaction
-from django.core.exceptions import ValidationError
-from django.utils import timezone
-from .models import CSVUpload, Client, Order
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+
+from celery import shared_task
+from django.core.exceptions import ValidationError
+from django.db import DatabaseError, transaction
+from django.utils import timezone
+
 from clients.documents import normalize_document
+
+from .models import Client, CSVUpload, Order
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +92,8 @@ def parse_order_amount(raw_amount):
 
     try:
         return Decimal(normalized)
-    except InvalidOperation:
-        raise ValueError(f"Invalid amount {raw_amount!r}")
+    except InvalidOperation as exc:
+        raise ValueError(f"Invalid amount {raw_amount!r}") from exc
 
 
 def get_required(row, column):
@@ -102,7 +105,7 @@ def get_required(row, column):
 
 
 def read_csv_text(file_path):
-    """Read a CSV file as text, accepting UTF-8 (with or without BOM) and Windows-1252."""
+    """Read a CSV file as text (UTF-8, with or without BOM, or Windows-1252)."""
     with open(file_path, "rb") as f:
         raw = f.read()
     try:
@@ -112,10 +115,10 @@ def read_csv_text(file_path):
         pass
     try:
         return raw.decode("cp1252")
-    except UnicodeDecodeError:
+    except UnicodeDecodeError as exc:
         raise ValueError(
             "Unsupported file encoding; save the file as UTF-8 or Windows-1252"
-        )
+        ) from exc
 
 
 def detect_delimiter(text):
@@ -180,7 +183,7 @@ def process_csv_upload(upload_id):
                         )
 
                         # === 2. ORDER ===
-                        # Order has no 'user' field; it belongs to a user through its client
+                        # Order has no 'user'; it belongs to a user via its client
                         # Lookup key (unique_together): client + order_number
                         Order.objects.update_or_create(
                             client=customer,

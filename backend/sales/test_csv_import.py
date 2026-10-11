@@ -1,16 +1,15 @@
+from datetime import date
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-
-from sales.models import CSVUpload, Order
-from sales.tasks import process_csv_upload
-from sales.tasks import normalize_status
-from clients.models import Client
-
-from datetime import date
 from django.utils import timezone
-from zoneinfo import ZoneInfo
-from decimal import Decimal
+
+from clients.models import Client
+from sales.models import CSVUpload, Order
+from sales.tasks import normalize_status, process_csv_upload
 
 HEADER = (
     "documento_cliente,nome_cliente,email_cliente,telefone_cliente,"
@@ -129,9 +128,6 @@ def test_import_parses_brazilian_date_as_aware_datetime(settings, tmp_path):
     order = Order.objects.get()
     assert timezone.is_aware(order.order_date)
     assert timezone.localtime(order.order_date).date() == date(2026, 1, 15)
-
-
-from zoneinfo import ZoneInfo
 
 
 @pytest.mark.django_db

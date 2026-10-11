@@ -1,0 +1,10 @@
+line-length = 88
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[lint]
+select = ["E", "F", "I", "B"]
+
+[lint.per-file-ignores]
+"**/test_*.py" = ["E501"]
+"core/settings.py" = ["E501"]

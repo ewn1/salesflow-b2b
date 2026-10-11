@@ -6,6 +6,7 @@
 - [ ] Refactor old importer tests to use the `import_rows` helper
 - [ ] Optional: validate CPF/CNPJ check digits
 - [ ] Define rule for negative amounts (refunds)
+- [ ] Dockerfile: multi-stage build or build ARG for a production image without dev tools
 
 ## Known limitations
 - Amount parser accepts odd inputs such as `1..5` (validates characters, not separator positions)

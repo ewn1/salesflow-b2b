@@ -1,8 +1,9 @@
-from django.db import models
-from clients.models import Client
-
 import uuid
+
 from django.conf import settings
+from django.db import models
+
+from clients.models import Client
 
 
 class Order(models.Model):

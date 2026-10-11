@@ -1,8 +1,9 @@
-from rest_framework import serializers
-from .models import Order
-from .models import CSVUpload
-from clients.models import Client
 from django.conf import settings
+from rest_framework import serializers
+
+from clients.models import Client
+
+from .models import CSVUpload, Order
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -52,6 +53,7 @@ class CSVUploadSerializer(serializers.ModelSerializer):
             )
         if value.size > settings.CSV_UPLOAD_MAX_BYTES:
             raise serializers.ValidationError(
-                f"File too large. Maximum size is {settings.CSV_UPLOAD_MAX_BYTES} bytes."
+                "File too large. "
+                f"Maximum size is {settings.CSV_UPLOAD_MAX_BYTES} bytes."
             )
         return value
