@@ -11,8 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create .env from the example file
-        run: cp .env.example .env
+      - name: Create .env for CI
+        run: cp .env.ci .env
 
       - name: Build and start services
         run: docker compose up -d --build --wait
@@ -21,7 +21,7 @@ jobs:
         run: docker compose exec -T web ruff check --no-cache .
 
       - name: Tests (pytest)
-        run: docker compose exec -T web pytest -v
+        run: docker compose exec -T web pytest -v -p no:cacheprovider
 
       - name: Show service logs on failure
         if: failure()
