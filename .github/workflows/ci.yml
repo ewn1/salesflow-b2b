@@ -18,7 +18,7 @@ jobs:
         run: docker compose up -d --build --wait
 
       - name: Lint (ruff)
-        run: docker compose exec -T web ruff check .
+        run: docker compose exec -T web ruff check --no-cache .
 
       - name: Tests (pytest)
         run: docker compose exec -T web pytest -v
