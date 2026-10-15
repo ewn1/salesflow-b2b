@@ -21,9 +21,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # A mágica da segurança relacional:
-        # Filtra os pedidos onde o "dono" do cliente associado é o usuário logado
-        return Order.objects.filter(client__user=self.request.user)
+        return Order.objects.filter(client__user=self.request.user).order_by(
+            "-order_date", "-pk"
+        )
 
 
 class CSVUploadView(APIView):
