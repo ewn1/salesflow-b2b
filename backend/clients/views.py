@@ -1,4 +1,4 @@
-from rest_framework import permissions, viewsets
+from rest_framework import filters, permissions, viewsets
 
 from .models import Client
 from .serializers import ClientSerializer
@@ -11,7 +11,10 @@ class ClientViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ClientSerializer
+
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "company_name", "cnpj_cpf"]
 
     def get_queryset(self):
         """

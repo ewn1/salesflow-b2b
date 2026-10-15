@@ -136,3 +136,34 @@ def test_client_list_is_paginated():
     assert response.data["count"] == 25
     assert len(response.data["results"]) == 20
     assert response.data["next"] is not None
+
+
+@pytest.mark.django_db
+def test_client_list_can_be_searched_by_name():
+    user = User.objects.create_user(username="alice", password="x")
+    Client.objects.create(user=user, name="Acme Papelaria", cnpj_cpf="11111111000191")
+    Client.objects.create(user=user, name="Beta Tintas", cnpj_cpf="22222222000191")
+    Client.objects.create(user=user, name="Gama Moveis", cnpj_cpf="33333333000191")
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    response = api.get("/api/clients/", {"search": "acme"})
+
+    assert response.status_code == 200
+    assert response.data["count"] == 1
+    assert response.data["results"][0]["name"] == "Acme Papelaria"
+
+
+@pytest.mark.django_db
+def test_search_never_returns_another_users_clients():
+    alice = User.objects.create_user(username="alice", password="x")
+    bob = User.objects.create_user(username="bob", password="x")
+    Client.objects.create(user=alice, name="Acme Papelaria", cnpj_cpf="11111111000191")
+    Client.objects.create(user=bob, name="Acme Bob", cnpj_cpf="44444444000191")
+    api = APIClient()
+    api.force_authenticate(user=alice)
+
+    response = api.get("/api/clients/", {"search": "acme"})
+
+    assert response.data["count"] == 1
+    assert response.data["results"][0]["name"] == "Acme Papelaria"
