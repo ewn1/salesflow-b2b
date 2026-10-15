@@ -1,5 +1,13 @@
 # Backlog
 
+## Next (roadmap, in order)
+- [ ] Search on orders (order number, client name, category)
+- [ ] Filter orders by status and date range
+- [ ] User registration endpoint
+- [ ] CORS (django-cors-headers), right before the front end
+- [ ] Aggregation endpoints for the dashboard
+- [ ] Front end: Vite + React + TypeScript, Redux Toolkit, Styled-Components, Recharts
+
 ## Pending
 - [ ] Tighten `Client.cnpj_cpf` max_length to 14 (documents are stored as digits only) + migration
 - [ ] Move `normalize_document` tests to import from `clients.documents`
@@ -9,10 +17,11 @@
 - [ ] Dockerfile: multi-stage build or build ARG for a production image without dev tools
 - [ ] Sweep remaining Portuguese comments/docstrings (e.g. core/celery.py, sales/urls.py) to English
 - [ ] Adopt `ruff format` and add `ruff format --check` to CI
-- [ ] Add a CI status badge to the README (when the real README is written)
 - [ ] Docker/CI: map the container user's UID to the host's, so tools can write cache files without `--no-cache` (CI currently runs ruff check --no-cache and pytest -p no:cacheprovider as a workaround)
 
 ## Known limitations
 - Amount parser accepts odd inputs such as `1..5` (validates characters, not separator positions)
 - CSV line numbers in the error report assume one physical line per record
 - Whole CSV is read into memory
+- Client search on `cnpj_cpf` matches digits only: a punctuated query like `11.111.111/0001-91` finds nothing
+- Search uses `LIKE '%term%'` (no index); fine for small volumes, slow at millions of rows
