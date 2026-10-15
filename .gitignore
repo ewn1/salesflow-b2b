@@ -13,3 +13,4 @@ frontend/.env
 
 .env
 .vscode/
+.ruff_cache/
