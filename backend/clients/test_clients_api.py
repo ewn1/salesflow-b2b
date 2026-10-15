@@ -1,6 +1,9 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
 from rest_framework.test import APIClient
+
+from clients.models import Client
 
 User = get_user_model()
 
@@ -117,3 +120,20 @@ def test_api_rejects_document_with_invalid_length(document):
     )
 
     assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_client_list_is_paginated():
+    user = User.objects.create_user(username="alice", password="x")
+    Client.objects.bulk_create(
+        [Client(user=user, name=f"Client {i}", cnpj_cpf=f"{i:011d}") for i in range(25)]
+    )
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    response = api.get("/api/clients/")
+
+    assert response.status_code == 200
+    assert response.data["count"] == 25
+    assert len(response.data["results"]) == 20
+    assert response.data["next"] is not None

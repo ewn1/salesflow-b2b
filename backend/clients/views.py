@@ -6,8 +6,8 @@ from .serializers import ClientSerializer
 
 class ClientViewSet(viewsets.ModelViewSet):
     """
-    API endpoint para CRUD completo de clientes.
-    Exige autenticação JWT e isola as requisições por usuário.
+    API endpoint for full CRUD on clients.
+    Requires JWT authentication and isolates requests per user.
     """
 
     serializer_class = ClientSerializer
@@ -15,7 +15,7 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Garante que o usuário veja estritamente os clientes associados à sua conta.
+        Ensure users only see the clients that belong to their own account.
         """
         return Client.objects.filter(user=self.request.user)
 
