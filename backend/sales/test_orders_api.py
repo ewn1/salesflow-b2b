@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -28,15 +29,19 @@ def order_payload(client_id, number="A-1"):
     }
 
 
-def make_order(client, number, category="", status="PENDING"):
+def make_order(client, number, category="", status="PENDING", order_date=None):
     return Order.objects.create(
         client=client,
         order_number=number,
-        order_date=timezone.now(),
+        order_date=order_date or timezone.now(),
         total_amount=Decimal("10.00"),
         status=status,
         product_category=category,
     )
+
+
+def local(year, month, day, hour=12):
+    return timezone.make_aware(datetime(year, month, day, hour))
 
 
 @pytest.mark.django_db
@@ -151,3 +156,38 @@ def test_order_list_can_be_filtered_by_status():
     assert response.data["count"] == 2
     numbers = {order["order_number"] for order in response.data["results"]}
     assert numbers == {"B-2002", "C-3003"}
+
+
+@pytest.mark.django_db
+def test_order_list_can_be_filtered_by_date_range():
+    user = User.objects.create_user(username="alice", password="x")
+    client = Client.objects.create(user=user, name="Acme", cnpj_cpf="11111111000191")
+    make_order(client, "A-1", order_date=local(2026, 1, 10))
+    make_order(client, "B-2", order_date=local(2026, 1, 20))
+    make_order(client, "C-3", order_date=local(2026, 2, 5))
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    response = api.get(
+        "/api/orders/",
+        {"order_date_after": "2026-01-15", "order_date_before": "2026-01-31"},
+    )
+
+    assert response.status_code == 200
+    numbers = {order["order_number"] for order in response.data["results"]}
+    assert numbers == {"B-2"}
+
+
+@pytest.mark.django_db
+def test_date_range_includes_the_whole_last_day():
+    user = User.objects.create_user(username="alice", password="x")
+    client = Client.objects.create(user=user, name="Acme", cnpj_cpf="11111111000191")
+    make_order(client, "A-1", order_date=local(2026, 1, 31, 23))
+    make_order(client, "B-2", order_date=local(2026, 2, 1, 1))
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    response = api.get("/api/orders/", {"order_date_before": "2026-01-31"})
+
+    numbers = {order["order_number"] for order in response.data["results"]}
+    assert numbers == {"A-1"}

@@ -7,6 +7,8 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from sales.filters import OrderFilter
+
 from .models import CSVUpload, Order
 from .serializers import CSVUploadSerializer, OrderSerializer
 from .tasks import process_csv_upload
@@ -21,7 +23,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ["status"]
+    filterset_class = OrderFilter
     search_fields = ["order_number", "client__name", "product_category"]
 
     def get_queryset(self):
