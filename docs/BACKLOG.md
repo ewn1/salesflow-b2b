@@ -17,6 +17,8 @@
 - [ ] Adopt `ruff format` and add `ruff format --check` to CI
 - [ ] Docker/CI: map the container user's UID to the host's, so tools can write cache files without `--no-cache` (CI currently runs ruff check --no-cache and pytest -p no:cacheprovider as a workaround)
 - [ ] Pin indirect dev dependencies (e.g. pluggy) or use a lock file, so rebuilds are reproducible
+- [ ] throttling (limite de tentativas) e confirmação de e-mail no cadastro.
+- [ ] Remove the comments in Portuguese from `core/urls.py` (the one that says “JWT Authentication Endpoints...”) along with the rest of the cleanup already underway.
 
 ## Known limitations
 - Amount parser accepts odd inputs such as `1..5` (validates characters, not separator positions)
