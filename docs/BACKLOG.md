@@ -1,8 +1,6 @@
 # Backlog
 
 ## Next (roadmap, in order)
-- [ ] Search on orders (order number, client name, category)
-- [ ] Filter orders by status and date range
 - [ ] User registration endpoint
 - [ ] CORS (django-cors-headers), right before the front end
 - [ ] Aggregation endpoints for the dashboard
@@ -18,6 +16,7 @@
 - [ ] Sweep remaining Portuguese comments/docstrings (e.g. core/celery.py, sales/urls.py) to English
 - [ ] Adopt `ruff format` and add `ruff format --check` to CI
 - [ ] Docker/CI: map the container user's UID to the host's, so tools can write cache files without `--no-cache` (CI currently runs ruff check --no-cache and pytest -p no:cacheprovider as a workaround)
+- [ ] Pin indirect dev dependencies (e.g. pluggy) or use a lock file, so rebuilds are reproducible
 
 ## Known limitations
 - Amount parser accepts odd inputs such as `1..5` (validates characters, not separator positions)
