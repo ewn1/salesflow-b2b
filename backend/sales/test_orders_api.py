@@ -28,13 +28,13 @@ def order_payload(client_id, number="A-1"):
     }
 
 
-def make_order(client, number, category=""):
+def make_order(client, number, category="", status="PENDING"):
     return Order.objects.create(
         client=client,
         order_number=number,
         order_date=timezone.now(),
         total_amount=Decimal("10.00"),
-        status="PENDING",
+        status=status,
         product_category=category,
     )
 
@@ -133,3 +133,21 @@ def test_order_search_never_returns_another_users_orders():
 
     assert response.data["count"] == 1
     assert response.data["results"][0]["order_number"] == "A-1001"
+
+
+@pytest.mark.django_db
+def test_order_list_can_be_filtered_by_status():
+    user = User.objects.create_user(username="alice", password="x")
+    client = Client.objects.create(user=user, name="Acme", cnpj_cpf="11111111000191")
+    make_order(client, "A-1001", status="PENDING")
+    make_order(client, "B-2002", status="COMPLETED")
+    make_order(client, "C-3003", status="COMPLETED")
+    api = APIClient()
+    api.force_authenticate(user=user)
+
+    response = api.get("/api/orders/", {"status": "COMPLETED"})
+
+    assert response.status_code == 200
+    assert response.data["count"] == 2
+    numbers = {order["order_number"] for order in response.data["results"]}
+    assert numbers == {"B-2002", "C-3003"}

@@ -1,6 +1,7 @@
 import uuid
 
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -19,7 +20,8 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ["status"]
     search_fields = ["order_number", "client__name", "product_category"]
 
     def get_queryset(self):
