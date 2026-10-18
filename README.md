@@ -53,14 +53,15 @@ curl -X POST http://localhost:8000/api/auth/register/ \
   -H "Content-Type: application/json" \
   -d '{"username": "demo", "email": "demo@example.com", "password": "S3cure-pass-phrase!"}'
 
-# 2. Log in (the response contains "access" and "refresh" tokens)
-curl -X POST http://localhost:8000/api/auth/token/ \
+# 2. Log in and keep the access token in a shell variable
+TOKEN=$(curl -s -X POST http://localhost:8000/api/auth/token/ \
   -H "Content-Type: application/json" \
-  -d '{"username": "demo", "password": "S3cure-pass-phrase!"}'
+  -d '{"username": "demo", "password": "S3cure-pass-phrase!"}' \
+  | sed -E 's/.*"access":"([^"]+)".*/\1/')
 
-# 3. Call a protected endpoint with the access token
+# 3. Call a protected endpoint with it
 curl http://localhost:8000/api/dashboard/summary/ \
-  -H "Authorization: Bearer <access-token>"
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Running the tests
