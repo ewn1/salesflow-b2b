@@ -30,7 +30,7 @@ class Order(models.Model):
         return f"Pedido #{self.id} - {self.client.name} - R$ {self.total_amount}"
 
 
-# Modelo de rastreamento do upload de arquivos.CSV
+# Tracks the progress of each CSV file upload
 class CSVUpload(models.Model):
     STATUS_CHOICES = [
         ("PENDING", "Pendente"),

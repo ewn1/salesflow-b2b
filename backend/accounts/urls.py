@@ -4,9 +4,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from accounts.views import RegisterView
 
 urlpatterns = [
-    # Rota para login: Retorna acces_token e refresh_token
+    # Login route: returns the access and refresh tokens
     path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    # Rota para renovar o access_token expirado usando o refresh_token
+    # Route to renew an expired access token using the refresh token
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # Public registration route: creates a new user account
     path("register/", RegisterView.as_view(), name="register"),
 ]

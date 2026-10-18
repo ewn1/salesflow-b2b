@@ -1,7 +1,6 @@
 # Backlog
 
 ## Next (roadmap, in order)
-- [ ] Aggregation endpoints for the dashboard
 - [ ] Front end: Vite + React + TypeScript, Redux Toolkit, Styled-Components, Recharts
 
 ## Pending
@@ -17,6 +16,8 @@
 - [ ] Pin indirect dev dependencies (e.g. pluggy) or use a lock file, so rebuilds are reproducible
 - [ ] throttling (limite de tentativas) e confirmação de e-mail no cadastro.
 - [ ] Remove the comments in Portuguese from `core/urls.py` (the one that says “JWT Authentication Endpoints...”) along with the rest of the cleanup already underway.
+- [ ] Move the test helpers (make_client, make_order, api_for, at) to a shared conftest.py
+- [ ] The dashboard revenue figure includes all non-cancelled orders, encompassing both PENDING and PROCESSING statuses; a “completed-only” view may become an option in the future.
 
 ## Known limitations
 - Amount parser accepts odd inputs such as `1..5` (validates characters, not separator positions)

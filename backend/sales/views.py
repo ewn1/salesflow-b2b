@@ -16,8 +16,8 @@ from .tasks import process_csv_upload
 
 class OrderViewSet(viewsets.ModelViewSet):
     """
-    API endpoint para gestão de pedidos.
-    Garante que o usuário só acesse pedidos atrelados aos SEUS clientes.
+    API endpoint for managing orders.
+    Ensures users can only access orders linked to THEIR clients.
     """
 
     serializer_class = OrderSerializer
@@ -61,11 +61,12 @@ class CSVUploadStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk, *args, **kwargs):
-        # get_object_or_404 já retorna erro 404 automaticamente se não existir
-        # ou se não pertencer ao usuário logado
+        # get_object_or_404 already returns a 404 if the object does not exist
+        # or does not belong to the logged-in user
         upload = get_object_or_404(CSVUpload, id=pk, user=request.user)
 
-        # Reutilizamos o serializer
+        # We reuse the serializer to return the current state of the upload,
+        # including status and progress.
         serializer = CSVUploadSerializer(upload)
 
         return Response(serializer.data, status=status.HTTP_200_OK)

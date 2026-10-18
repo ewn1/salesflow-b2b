@@ -20,10 +20,11 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # Endpoints de Autenticação JWT: /api/auth/token/ e /api/auth/token/refresh/
+    # JWT auth and registration:
+    # /api/auth/token/, /api/auth/token/refresh/ and /api/auth/register/
     path("api/auth/", include("accounts.urls")),
-    # Endpoints de Clientes: /api/clients/
+    # Client endpoints: /api/clients/
     path("api/", include("clients.urls")),
-    # Endpoints de Pedidos: /api/orders/
+    # Order endpoints: /api/orders/
     path("api/", include("sales.urls")),
 ]

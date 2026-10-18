@@ -32,7 +32,7 @@ def import_rows(user, *rows):
 
 @pytest.mark.django_db
 def test_import_maps_portuguese_status_to_internal_value(settings, tmp_path):
-    settings.MEDIA_ROOT = tmp_path  # arquivo de teste vai para pasta temporária
+    settings.MEDIA_ROOT = tmp_path  # test files go to a temporary folder
 
     user = get_user_model().objects.create_user(username="u1", password="x")
     row = "11111111000191,Acme,a@acme.com,1199999999,Varejo,SP,1001,2026-01-15,1500.50,Papelaria,Concluido\n"

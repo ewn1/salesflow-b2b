@@ -6,8 +6,9 @@ from .models import Client
 
 class ClientSerializer(serializers.ModelSerializer):
     """
-    Serializer responsável por validar e estruturar os dados dos clientes B2B.
-    Garante a integridade do CNPJ/CPF e associa o registro ao usuário autenticado.
+    Validates and structures B2B client data.
+    Normalizes the CNPJ/CPF to digits, rejects duplicates and ties the
+    record to the authenticated user.
     """
 
     class Meta:
