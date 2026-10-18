@@ -1,8 +1,6 @@
 # Backlog
 
 ## Next (roadmap, in order)
-- [ ] User registration endpoint
-- [ ] CORS (django-cors-headers), right before the front end
 - [ ] Aggregation endpoints for the dashboard
 - [ ] Front end: Vite + React + TypeScript, Redux Toolkit, Styled-Components, Recharts
 
