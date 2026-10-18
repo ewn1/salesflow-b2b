@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .dashboard_views import DashboardSummaryView
 from .views import CSVUploadStatusView, CSVUploadView, OrderViewSet
 
 # O router cuida dos ViewSets (CRUD)
@@ -18,5 +19,10 @@ urlpatterns = [
         "upload-csv/<uuid:pk>/status/",
         CSVUploadStatusView.as_view(),
         name="upload-csv-status",
+    ),
+    path(
+        "dashboard/summary/",
+        DashboardSummaryView.as_view(),
+        name="dashboard-summary",
     ),
 ]
