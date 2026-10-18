@@ -5,6 +5,7 @@ from .dashboard_views import (
     DashboardSummaryView,
     SalesByCategoryView,
     SalesByMonthView,
+    TopClientsView,
 )
 from .views import CSVUploadStatusView, CSVUploadView, OrderViewSet
 
@@ -38,5 +39,10 @@ urlpatterns = [
         "dashboard/sales-by-category/",
         SalesByCategoryView.as_view(),
         name="dashboard-sales-by-category",
+    ),
+    path(
+        "dashboard/top-clients/",
+        TopClientsView.as_view(),
+        name="dashboard-top-clients",
     ),
 ]

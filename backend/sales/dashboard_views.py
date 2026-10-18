@@ -3,7 +3,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics
+from rest_framework import generics, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -12,6 +12,8 @@ from .models import Order
 
 TWO_PLACES = Decimal("0.01")
 UNCATEGORIZED = "Uncategorized"
+DEFAULT_TOP_CLIENTS = 5
+MAX_TOP_CLIENTS = 50
 
 
 def money(value):
@@ -94,6 +96,40 @@ class SalesByCategoryView(DashboardBaseView):
             [
                 {
                     "category": row["product_category"] or UNCATEGORIZED,
+                    "revenue": money(row["revenue"]),
+                    "orders_count": row["orders_count"],
+                }
+                for row in rows
+            ]
+        )
+
+
+class TopClientsParams(serializers.Serializer):
+    """Validates the query string of the top clients endpoint."""
+
+    limit = serializers.IntegerField(
+        min_value=1, max_value=MAX_TOP_CLIENTS, default=DEFAULT_TOP_CLIENTS
+    )
+
+
+class TopClientsView(DashboardBaseView):
+    def get(self, request):
+        params = TopClientsParams(data=request.query_params)
+        params.is_valid(raise_exception=True)
+        limit = params.validated_data["limit"]
+
+        rows = (
+            self.filter_queryset(self.get_queryset())
+            .values("client_id", "client__name")
+            .annotate(revenue=Sum("total_amount"), orders_count=Count("pk"))
+            .order_by("-revenue", "client__name", "client_id")[:limit]
+        )
+
+        return Response(
+            [
+                {
+                    "client_id": row["client_id"],
+                    "name": row["client__name"],
                     "revenue": money(row["revenue"]),
                     "orders_count": row["orders_count"],
                 }

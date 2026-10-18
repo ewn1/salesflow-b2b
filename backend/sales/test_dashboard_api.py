@@ -146,7 +146,8 @@ def test_summary_rejects_an_invalid_date():
 
 MONTH_URL = "/api/dashboard/sales-by-month/"
 CATEGORY_URL = "/api/dashboard/sales-by-category/"
-GROUPED_URLS = [MONTH_URL, CATEGORY_URL]
+TOP_URL = "/api/dashboard/top-clients/"
+GROUPED_URLS = [MONTH_URL, CATEGORY_URL, TOP_URL]
 
 
 @pytest.mark.parametrize("url", GROUPED_URLS)
@@ -269,3 +270,88 @@ def test_sales_by_category_labels_orders_without_category():
     assert response.json() == [
         {"category": "Uncategorized", "revenue": "100.00", "orders_count": 1},
     ]
+
+
+def make_ranked_clients(owner, count):
+    """Create clients "Client 1".."Client N" with revenue 10, 20, ... N * 10."""
+    for index in range(1, count + 1):
+        client = make_client(owner, f"Client {index}", f"{index:011d}")
+        make_order(client, f"O-{index}", f"{index * 10}.00")
+
+
+@pytest.mark.django_db
+def test_top_clients_ranks_by_revenue_and_skips_cancelled_only_clients():
+    owner = User.objects.create_user(username="owner", password="x")
+    # Created from the lowest to the highest revenue so insertion order cannot
+    # fake the ranking.
+    carol = make_client(owner, "Carol", "33333333333")
+    alice = make_client(owner, "Alice", "11111111111")
+    bob = make_client(owner, "Bob", "22222222222")
+    dave = make_client(owner, "Dave", "44444444444")
+    make_order(carol, "C-1", "20.00")
+    make_order(alice, "A-1", "100.00")
+    make_order(alice, "A-2", "50.00")
+    make_order(bob, "B-1", "300.00")
+    make_order(dave, "D-1", "999.00", status="CANCELLED")
+
+    response = api_for(owner).get(TOP_URL)
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"client_id": bob.id, "name": "Bob", "revenue": "300.00", "orders_count": 1},
+        {
+            "client_id": alice.id,
+            "name": "Alice",
+            "revenue": "150.00",
+            "orders_count": 2,
+        },
+        {"client_id": carol.id, "name": "Carol", "revenue": "20.00", "orders_count": 1},
+    ]
+
+
+@pytest.mark.django_db
+def test_top_clients_defaults_to_five_results():
+    owner = User.objects.create_user(username="owner", password="x")
+    make_ranked_clients(owner, 6)
+
+    response = api_for(owner).get(TOP_URL)
+
+    assert response.status_code == 200
+    names = [row["name"] for row in response.json()]
+    assert names == ["Client 6", "Client 5", "Client 4", "Client 3", "Client 2"]
+
+
+@pytest.mark.django_db
+def test_top_clients_accepts_a_limit():
+    owner = User.objects.create_user(username="owner", password="x")
+    make_ranked_clients(owner, 6)
+
+    response = api_for(owner).get(TOP_URL, {"limit": 2})
+
+    assert response.status_code == 200
+    assert [row["name"] for row in response.json()] == ["Client 6", "Client 5"]
+
+
+@pytest.mark.parametrize("bad_limit", ["abc", "0", "-1", "51"])
+@pytest.mark.django_db
+def test_top_clients_rejects_an_invalid_limit(bad_limit):
+    owner = User.objects.create_user(username="owner", password="x")
+
+    response = api_for(owner).get(TOP_URL, {"limit": bad_limit})
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_top_clients_breaks_revenue_ties_by_name():
+    owner = User.objects.create_user(username="owner", password="x")
+    # Bob is created first so insertion order cannot fake the tie-break.
+    bob = make_client(owner, "Bob", "22222222222")
+    alice = make_client(owner, "Alice", "11111111111")
+    make_order(bob, "B-1", "100.00")
+    make_order(alice, "A-1", "100.00")
+
+    response = api_for(owner).get(TOP_URL)
+
+    assert response.status_code == 200
+    assert [row["name"] for row in response.json()] == ["Alice", "Bob"]
