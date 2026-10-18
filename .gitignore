@@ -5,6 +5,11 @@ backend/*.pyc
 backend/db.sqlite3
 backend/.env
 backend/.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+backend/media/
 
 # Node/React
 frontend/node_modules/
@@ -13,4 +18,3 @@ frontend/.env
 
 .env
 .vscode/
-.ruff_cache/
