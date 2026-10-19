@@ -28,3 +28,23 @@
 - Client search on `cnpj_cpf` matches digits only: a punctuated query like `11.111.111/0001-91` finds nothing
 - Search uses `LIKE '%term%'` (no index); fine for small volumes, slow at millions of rows
 - The dashboard revenue figure includes all non-cancelled orders, encompassing both PENDING and PROCESSING statuses; a “completed-only” view may become an option in the future.
+
+### Auth: move the refresh token to an HttpOnly cookie
+
+**Current decision:** the front end stores the access and refresh tokens in
+`localStorage` (isolated in one module, `auth/tokenStorage`). Any XSS can read
+and exfiltrate them. Chosen to avoid reopening the backend and to keep hosting
+open; the trade-off is documented on purpose.
+
+**Target:** refresh token in an `HttpOnly`, `Secure`, `SameSite` cookie; access
+token kept in memory; silent refresh when the app starts.
+
+**Needs:**
+- Backend views that set and clear the cookie and refresh from it, with tests
+- CORS with credentials (origins are already explicit) and CSRF care on
+  refresh and logout
+- Front and API on the same site (or behind a reverse proxy) - decide together
+  with hosting
+- A loading state in the private route guard while the silent refresh runs
+- Review SimpleJWT lifetimes, refresh rotation and blacklisting
+- Consider a Content Security Policy
