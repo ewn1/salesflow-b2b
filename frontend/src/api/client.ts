@@ -1,5 +1,7 @@
 // Thin wrapper around fetch for the Sales Flow API.
-// Auth headers and token refresh are added in later steps.
+// Token refresh is added in a later step.
+
+import { getAccessToken } from '../auth/tokenStorage'
 
 export class ApiError extends Error {
   readonly status: number
@@ -16,6 +18,8 @@ export class ApiError extends Error {
 type RequestOptions = {
   method?: string
   body?: unknown
+  // Set to false for public endpoints (login, register, refresh)
+  auth?: boolean
 }
 
 function getBaseUrl(): string {
@@ -44,9 +48,17 @@ export async function request<T = unknown>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
+  const { auth = true } = options
   const url = `${getBaseUrl()}${path}`
   const headers = new Headers()
   const init: RequestInit = { method: options.method ?? 'GET', headers }
+
+  if (auth) {
+    const token = getAccessToken()
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+  }
 
   if (options.body !== undefined) {
     headers.set('Content-Type', 'application/json')

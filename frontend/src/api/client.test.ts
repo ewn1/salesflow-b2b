@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, request } from './client'
+import { saveTokens } from '../auth/tokenStorage'
 
 const fetchMock = vi.fn()
 
@@ -12,11 +13,13 @@ function jsonResponse(body: unknown, status = 200) {
 
 describe('request', () => {
   beforeEach(() => {
+    localStorage.clear()
     vi.stubEnv('VITE_API_URL', 'http://api.test/api')
     vi.stubGlobal('fetch', fetchMock)
   })
 
   afterEach(() => {
+    localStorage.clear()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
     fetchMock.mockReset()
@@ -84,5 +87,42 @@ describe('request', () => {
     vi.stubEnv('VITE_API_URL', '')
 
     await expect(request('/clients/')).rejects.toThrow('VITE_API_URL')
+  })
+
+  describe('authentication', () => {
+    it('sends the access token as a Bearer header', async () => {
+      saveTokens({ access: 'access-1', refresh: 'refresh-1' })
+      fetchMock.mockResolvedValue(jsonResponse({}))
+
+      await request('/dashboard/summary/')
+
+      const init = fetchMock.mock.calls[0][1]
+      expect(new Headers(init.headers).get('Authorization')).toBe(
+        'Bearer access-1',
+      )
+    })
+
+    it('sends no Authorization header when there is no token', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({}))
+
+      await request('/dashboard/summary/')
+
+      const init = fetchMock.mock.calls[0][1]
+      expect(new Headers(init.headers).get('Authorization')).toBeNull()
+    })
+
+    it('sends no Authorization header when auth is disabled', async () => {
+      saveTokens({ access: 'access-1', refresh: 'refresh-1' })
+      fetchMock.mockResolvedValue(jsonResponse({ access: 'a', refresh: 'r' }))
+
+      await request('/auth/token/', {
+        method: 'POST',
+        body: { username: 'demo', password: 'secret' },
+        auth: false,
+      })
+
+      const init = fetchMock.mock.calls[0][1]
+      expect(new Headers(init.headers).get('Authorization')).toBeNull()
+    })
   })
 })
