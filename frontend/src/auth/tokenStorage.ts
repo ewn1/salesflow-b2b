@@ -5,7 +5,7 @@
 const ACCESS_KEY = 'salesflow.access'
 const REFRESH_KEY = 'salesflow.refresh'
 
-type Tokens = {
+export type Tokens = {
   access: string
   refresh?: string
 }

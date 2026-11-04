@@ -1,7 +1,13 @@
-// Thin wrapper around fetch for the Sales Flow API.
-// Token refresh is added in a later step.
+// Thin wrapper around fetch for the Sales Flow API: base URL, JSON, the
+// Authorization header and one token refresh when the API answers 401.
 
-import { getAccessToken } from '../auth/tokenStorage'
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  saveTokens,
+  type Tokens,
+} from '../auth/tokenStorage'
 
 export class ApiError extends Error {
   readonly status: number
@@ -20,6 +26,14 @@ type RequestOptions = {
   body?: unknown
   // Set to false for public endpoints (login, register, refresh)
   auth?: boolean
+}
+
+let sessionExpiredHandler: (() => void) | null = null
+
+// The app registers what happens when the session ends (for example, log out
+// and go to the login page), so this module does not depend on the store.
+export function setSessionExpiredHandler(handler: (() => void) | null): void {
+  sessionExpiredHandler = handler
 }
 
 function getBaseUrl(): string {
@@ -44,10 +58,8 @@ async function readBody(response: Response): Promise<unknown> {
   }
 }
 
-export async function request<T = unknown>(
-  path: string,
-  options: RequestOptions = {},
-): Promise<T> {
+// A single attempt: no refresh, no retry.
+async function send<T>(path: string, options: RequestOptions): Promise<T> {
   const { auth = true } = options
   const url = `${getBaseUrl()}${path}`
   const headers = new Headers()
@@ -74,4 +86,70 @@ export async function request<T = unknown>(
 
   // The cast is a promise from the caller, not a runtime check.
   return data as T
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
+}
+
+function endSession(): void {
+  clearTokens()
+  sessionExpiredHandler?.()
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refresh = getRefreshToken()
+  if (!refresh) {
+    return false
+  }
+  try {
+    const tokens = await send<Tokens>('/auth/token/refresh/', {
+      method: 'POST',
+      body: { refresh },
+      auth: false,
+    })
+    saveTokens(tokens)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Requests that fail with 401 at the same time share one refresh call.
+let refreshInFlight: Promise<boolean> | null = null
+
+function refreshOnce(): Promise<boolean> {
+  refreshInFlight ??= refreshAccessToken().finally(() => {
+    refreshInFlight = null
+  })
+  return refreshInFlight
+}
+
+export async function request<T = unknown>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const { auth = true } = options
+
+  try {
+    return await send<T>(path, options)
+  } catch (error) {
+    if (!auth || !isUnauthorized(error)) {
+      throw error
+    }
+    if (!(await refreshOnce())) {
+      endSession()
+      throw error
+    }
+  }
+
+  // The access token was renewed: repeat the original call, once.
+  try {
+    return await send<T>(path, options)
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      endSession()
+    }
+    throw error
+  }
 }
