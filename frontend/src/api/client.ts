@@ -130,6 +130,7 @@ export async function request<T = unknown>(
   options: RequestOptions = {},
 ): Promise<T> {
   const { auth = true } = options
+  const tokenUsed = auth ? getAccessToken() : null
 
   try {
     return await send<T>(path, options)
@@ -137,13 +138,17 @@ export async function request<T = unknown>(
     if (!auth || !isUnauthorized(error)) {
       throw error
     }
-    if (!(await refreshOnce())) {
+    // Another request may have renewed the token while this one was in
+    // flight. If so, just repeat the call with the new token.
+    const currentToken = getAccessToken()
+    const alreadyRenewed = currentToken !== null && currentToken !== tokenUsed
+    if (!alreadyRenewed && !(await refreshOnce())) {
       endSession()
       throw error
     }
   }
 
-  // The access token was renewed: repeat the original call, once.
+  // The access token is valid again: repeat the original call, once.
   try {
     return await send<T>(path, options)
   } catch (error) {

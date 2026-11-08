@@ -208,6 +208,26 @@ describe('request', () => {
       expect(getAccessToken()).toBe('access-1')
     })
 
+    it('retries without refreshing when another request already renewed the token', async () => {
+      fakeServer('access-2', refreshOk)
+      // The first call (sent with access-1) stays pending until we answer it.
+      let answerLate: (response: Response) => void = () => {}
+      fetchMock.mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            answerLate = resolve
+          }),
+      )
+
+      const late = request('/orders/')
+      // Meanwhile, another request finished renewing the token.
+      saveTokens({ access: 'access-2' })
+      answerLate(jsonResponse({ detail: 'Token is expired' }, 401))
+
+      await expect(late).resolves.toEqual({ ok: true })
+      expect(refreshCalls()).toHaveLength(0)
+    })
+
     it('clears the tokens and notifies the app when the refresh fails', async () => {
       const onExpired = vi.fn()
       setSessionExpiredHandler(onExpired)
