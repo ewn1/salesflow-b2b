@@ -32,3 +32,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Public profile of the authenticated user. Read-only, never the password."""
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "email"]
+        read_only_fields = fields
