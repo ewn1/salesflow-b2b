@@ -1,4 +1,9 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import {
+  createAsyncThunk,
+  createSlice,
+  type PayloadAction,
+} from '@reduxjs/toolkit'
+import { request } from '../api/client'
 import { getAccessToken } from './tokenStorage'
 
 export type User = {
@@ -23,6 +28,10 @@ function getInitialState(): AuthState {
   }
 }
 
+export const loadCurrentUser = createAsyncThunk('auth/loadCurrentUser', () =>
+  request<User>('/auth/me/'),
+)
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: getInitialState,
@@ -35,6 +44,12 @@ const authSlice = createSlice({
       state.status = 'anonymous'
       state.user = null
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(loadCurrentUser.fulfilled, (state, action) => {
+      state.status = 'authenticated'
+      state.user = action.payload
+    })
   },
 })
 
