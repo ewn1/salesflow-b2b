@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import { getAccessToken } from './tokenStorage'
 
 export type User = {
   id: number
@@ -13,11 +14,18 @@ export type AuthState = {
   user: User | null
 }
 
-const initialState: AuthState = { status: 'anonymous', user: null }
+// A stored token does not prove the session is valid: the API still has to
+// confirm it, so the app starts in "checking" until the user is loaded.
+function getInitialState(): AuthState {
+  return {
+    status: getAccessToken() ? 'checking' : 'anonymous',
+    user: null,
+  }
+}
 
 const authSlice = createSlice({
   name: 'auth',
-  initialState,
+  initialState: getInitialState,
   reducers: {
     userLoaded(state, action: PayloadAction<User>) {
       state.status = 'authenticated'
