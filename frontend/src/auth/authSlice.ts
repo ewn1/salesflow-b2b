@@ -46,10 +46,15 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(loadCurrentUser.fulfilled, (state, action) => {
-      state.status = 'authenticated'
-      state.user = action.payload
-    })
+    builder
+      .addCase(loadCurrentUser.fulfilled, (state, action) => {
+        state.status = 'authenticated'
+        state.user = action.payload
+      })
+      .addCase(loadCurrentUser.rejected, (state) => {
+        state.status = 'anonymous'
+        state.user = null
+      })
   },
 })
 

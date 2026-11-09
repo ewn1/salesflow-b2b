@@ -72,4 +72,30 @@ describe('loadCurrentUser', () => {
 
     expect(store.getState().auth).toEqual({ status: 'authenticated', user })
   })
+
+  it.each([
+    [
+      'the API rejects the token',
+      () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ detail: 'Invalid token' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+    ],
+    [
+      'the network fails',
+      () => Promise.reject(new TypeError('Failed to fetch')),
+    ],
+  ])('goes from checking to anonymous when %s', async (_reason, answer) => {
+    saveTokens({ access: 'access-1', refresh: 'refresh-1' })
+    fetchMock.mockImplementation(answer)
+    const store = makeStore()
+    expect(store.getState().auth.status).toBe('checking')
+
+    await store.dispatch(loadCurrentUser())
+
+    expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
+  })
 })
