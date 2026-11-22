@@ -146,4 +146,35 @@ describe('login', () => {
     expect(getRefreshToken()).toBeNull()
     expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
   })
+
+  it.each([
+    [
+      'the API refuses the credentials',
+      () =>
+        Promise.resolve(
+          jsonResponse({ detail: 'No active account found' }, 401),
+        ),
+      { status: 401, data: { detail: 'No active account found' } },
+    ],
+    [
+      'the network fails',
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      { status: null, data: null },
+    ],
+  ])(
+    'rejects with a plain error value when %s',
+    async (_reason, answer, expected) => {
+      fetchMock.mockImplementation(answer)
+      const store = makeStore()
+
+      const result = await store.dispatch(
+        login({ username: 'alice', password: 'wrong-pass' }),
+      )
+
+      expect(login.rejected.match(result)).toBe(true)
+      expect(result.payload).toEqual(expected)
+      expect(getAccessToken()).toBeNull()
+      expect(store.getState().auth.status).toBe('anonymous')
+    },
+  )
 })
