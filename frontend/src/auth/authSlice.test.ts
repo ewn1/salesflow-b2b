@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import reducer, {
   loadCurrentUser,
   login,
+  register,
   sessionEnded,
   userLoaded,
 } from './authSlice'
@@ -177,4 +178,40 @@ describe('login', () => {
       expect(store.getState().auth.status).toBe('anonymous')
     },
   )
+})
+
+describe('register', () => {
+  const newAccount = {
+    username: 'alice',
+    email: 'alice@example.com',
+    password: 'S3cure-pass-phrase!',
+  }
+
+  it('creates the account without opening a session', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        { id: 1, username: 'alice', email: 'alice@example.com' },
+        201,
+      ),
+    )
+    const store = makeStore()
+
+    const result = await store.dispatch(register(newAccount))
+
+    expect(register.fulfilled.match(result)).toBe(true)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(newAccount)
+    expect(getAccessToken()).toBeNull()
+    expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
+  })
+
+  it('rejects with the field errors returned by the API', async () => {
+    const fieldErrors = { email: ['A user with this email already exists.'] }
+    fetchMock.mockResolvedValueOnce(jsonResponse(fieldErrors, 400))
+    const store = makeStore()
+
+    const result = await store.dispatch(register(newAccount))
+
+    expect(register.rejected.match(result)).toBe(true)
+    expect(result.payload).toEqual({ status: 400, data: fieldErrors })
+  })
 })

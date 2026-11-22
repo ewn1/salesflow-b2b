@@ -71,6 +71,24 @@ export const login = createAsyncThunk<
   }
 })
 
+type NewAccount = Credentials & { email: string }
+
+export const register = createAsyncThunk<
+  User,
+  NewAccount,
+  { rejectValue: AuthError }
+>('auth/register', async (account, { rejectWithValue }) => {
+  try {
+    return await request<User>('/auth/register/', {
+      method: 'POST',
+      body: account,
+      auth: false,
+    })
+  } catch (error) {
+    return rejectWithValue(toAuthError(error))
+  }
+})
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: getInitialState,
