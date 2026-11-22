@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import reducer, {
   loadCurrentUser,
   login,
+  logout,
   register,
   sessionEnded,
   userLoaded,
@@ -213,5 +214,21 @@ describe('register', () => {
 
     expect(register.rejected.match(result)).toBe(true)
     expect(result.payload).toEqual({ status: 400, data: fieldErrors })
+  })
+})
+
+describe('logout', () => {
+  it('drops the stored tokens and the user', async () => {
+    saveTokens({ access: 'access-1', refresh: 'refresh-1' })
+    fetchMock.mockResolvedValueOnce(jsonResponse(user))
+    const store = makeStore()
+    await store.dispatch(loadCurrentUser())
+    expect(store.getState().auth.status).toBe('authenticated')
+
+    store.dispatch(logout())
+
+    expect(getAccessToken()).toBeNull()
+    expect(getRefreshToken()).toBeNull()
+    expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
   })
 })

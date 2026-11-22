@@ -1,6 +1,7 @@
 import {
   createAsyncThunk,
   createSlice,
+  type Dispatch,
   type PayloadAction,
 } from '@reduxjs/toolkit'
 import { ApiError, request } from '../api/client'
@@ -120,4 +121,10 @@ const authSlice = createSlice({
 })
 
 export const { userLoaded, sessionEnded } = authSlice.actions
+
+export const logout = () => (dispatch: Dispatch) => {
+  clearTokens()
+  dispatch(sessionEnded())
+}
+
 export default authSlice.reducer
