@@ -4,7 +4,7 @@ import {
   type PayloadAction,
 } from '@reduxjs/toolkit'
 import { request } from '../api/client'
-import { getAccessToken } from './tokenStorage'
+import { getAccessToken, saveTokens } from './tokenStorage'
 
 export type User = {
   id: number
@@ -32,6 +32,22 @@ export const loadCurrentUser = createAsyncThunk('auth/loadCurrentUser', () =>
   request<User>('/auth/me/'),
 )
 
+type Credentials = { username: string; password: string }
+type TokenPair = { access: string; refresh: string }
+
+export const login = createAsyncThunk(
+  'auth/login',
+  async (credentials: Credentials) => {
+    const tokens = await request<TokenPair>('/auth/token/', {
+      method: 'POST',
+      body: credentials,
+      auth: false,
+    })
+    saveTokens(tokens)
+    return request<User>('/auth/me/')
+  },
+)
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: getInitialState,
@@ -54,6 +70,10 @@ const authSlice = createSlice({
       .addCase(loadCurrentUser.rejected, (state) => {
         state.status = 'anonymous'
         state.user = null
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        state.status = 'authenticated'
+        state.user = action.payload
       })
   },
 })

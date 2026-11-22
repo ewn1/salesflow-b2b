@@ -1,9 +1,39 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import reducer, { loadCurrentUser, sessionEnded, userLoaded } from './authSlice'
-import { saveTokens } from './tokenStorage'
+import reducer, {
+  loadCurrentUser,
+  login,
+  sessionEnded,
+  userLoaded,
+} from './authSlice'
+import { getAccessToken, getRefreshToken, saveTokens } from './tokenStorage'
 
 const user = { id: 1, username: 'alice', email: 'alice@example.com' }
+
+const fetchMock = vi.fn()
+
+function makeStore() {
+  return configureStore({ reducer: { auth: reducer } })
+}
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+beforeEach(() => {
+  vi.stubEnv('VITE_API_URL', 'http://api.test')
+  vi.stubGlobal('fetch', fetchMock)
+})
+
+afterEach(() => {
+  fetchMock.mockReset()
+  vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+  localStorage.clear()
+})
 
 describe('authSlice reducers', () => {
   it('userLoaded marks the session as authenticated and stores the user', () => {
@@ -40,24 +70,6 @@ describe('authSlice initial state', () => {
 })
 
 describe('loadCurrentUser', () => {
-  const fetchMock = vi.fn()
-
-  function makeStore() {
-    return configureStore({ reducer: { auth: reducer } })
-  }
-
-  beforeEach(() => {
-    vi.stubEnv('VITE_API_URL', 'http://api.test')
-    vi.stubGlobal('fetch', fetchMock)
-  })
-
-  afterEach(() => {
-    fetchMock.mockReset()
-    vi.unstubAllEnvs()
-    vi.unstubAllGlobals()
-    localStorage.clear()
-  })
-
   it('moves from checking to authenticated with the user returned by the API', async () => {
     saveTokens({ access: 'access-1', refresh: 'refresh-1' })
     fetchMock.mockResolvedValueOnce(
@@ -97,5 +109,26 @@ describe('loadCurrentUser', () => {
     await store.dispatch(loadCurrentUser())
 
     expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
+  })
+})
+
+describe('login', () => {
+  it('stores the tokens and ends up authenticated with the user', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ access: 'access-1', refresh: 'refresh-1' }),
+      )
+      .mockResolvedValueOnce(jsonResponse(user))
+    const store = makeStore()
+
+    await store.dispatch(login({ username: 'alice', password: 'secret-pass' }))
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      username: 'alice',
+      password: 'secret-pass',
+    })
+    expect(getAccessToken()).toBe('access-1')
+    expect(getRefreshToken()).toBe('refresh-1')
+    expect(store.getState().auth).toEqual({ status: 'authenticated', user })
   })
 })
