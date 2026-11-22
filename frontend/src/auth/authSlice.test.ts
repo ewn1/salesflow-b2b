@@ -131,4 +131,19 @@ describe('login', () => {
     expect(getRefreshToken()).toBe('refresh-1')
     expect(store.getState().auth).toEqual({ status: 'authenticated', user })
   })
+
+  it('clears the stored tokens when the user cannot be loaded after the login', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ access: 'access-1', refresh: 'refresh-1' }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ detail: 'Server error' }, 500))
+    const store = makeStore()
+
+    await store.dispatch(login({ username: 'alice', password: 'secret-pass' }))
+
+    expect(getAccessToken()).toBeNull()
+    expect(getRefreshToken()).toBeNull()
+    expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
+  })
 })

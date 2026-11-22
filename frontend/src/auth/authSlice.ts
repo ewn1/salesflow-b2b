@@ -4,7 +4,7 @@ import {
   type PayloadAction,
 } from '@reduxjs/toolkit'
 import { request } from '../api/client'
-import { getAccessToken, saveTokens } from './tokenStorage'
+import { clearTokens, getAccessToken, saveTokens } from './tokenStorage'
 
 export type User = {
   id: number
@@ -44,7 +44,13 @@ export const login = createAsyncThunk(
       auth: false,
     })
     saveTokens(tokens)
-    return request<User>('/auth/me/')
+    try {
+      return await request<User>('/auth/me/')
+    } catch (error) {
+      // Never keep a half-open session: tokens without a known user.
+      clearTokens()
+      throw error
+    }
   },
 )
 
