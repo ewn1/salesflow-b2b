@@ -6,7 +6,6 @@ import reducer, {
   logout,
   register,
   sessionEnded,
-  userLoaded,
 } from './authSlice'
 import { getAccessToken, getRefreshToken, saveTokens } from './tokenStorage'
 
@@ -38,12 +37,6 @@ afterEach(() => {
 })
 
 describe('authSlice reducers', () => {
-  it('userLoaded marks the session as authenticated and stores the user', () => {
-    const state = reducer({ status: 'checking', user: null }, userLoaded(user))
-
-    expect(state).toEqual({ status: 'authenticated', user })
-  })
-
   it('sessionEnded goes back to anonymous and drops the user', () => {
     const state = reducer({ status: 'authenticated', user }, sessionEnded())
 

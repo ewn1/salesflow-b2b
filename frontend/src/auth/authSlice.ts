@@ -1,8 +1,8 @@
 import {
   createAsyncThunk,
   createSlice,
+  isAnyOf,
   type Dispatch,
-  type PayloadAction,
 } from '@reduxjs/toolkit'
 import { ApiError, request } from '../api/client'
 import { clearTokens, getAccessToken, saveTokens } from './tokenStorage'
@@ -90,37 +90,31 @@ export const register = createAsyncThunk<
   }
 })
 
+function becomeAnonymous(state: AuthState) {
+  state.status = 'anonymous'
+  state.user = null
+}
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: getInitialState,
   reducers: {
-    userLoaded(state, action: PayloadAction<User>) {
-      state.status = 'authenticated'
-      state.user = action.payload
-    },
-    sessionEnded(state) {
-      state.status = 'anonymous'
-      state.user = null
-    },
+    sessionEnded: becomeAnonymous,
   },
   extraReducers: (builder) => {
     builder
-      .addCase(loadCurrentUser.fulfilled, (state, action) => {
-        state.status = 'authenticated'
-        state.user = action.payload
-      })
-      .addCase(loadCurrentUser.rejected, (state) => {
-        state.status = 'anonymous'
-        state.user = null
-      })
-      .addCase(login.fulfilled, (state, action) => {
-        state.status = 'authenticated'
-        state.user = action.payload
-      })
+      .addCase(loadCurrentUser.rejected, becomeAnonymous)
+      .addMatcher(
+        isAnyOf(loadCurrentUser.fulfilled, login.fulfilled),
+        (state, action) => {
+          state.status = 'authenticated'
+          state.user = action.payload
+        },
+      )
   },
 })
 
-export const { userLoaded, sessionEnded } = authSlice.actions
+export const { sessionEnded } = authSlice.actions
 
 export const logout = () => (dispatch: Dispatch) => {
   clearTokens()
