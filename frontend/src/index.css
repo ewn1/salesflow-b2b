@@ -1,0 +1,229 @@
+/* Design tokens. Dark is the default theme; light is opt-in through
+  <html data-theme="light">. Every text/background pair was checked against
+  WCAG AA: 4.5:1 for text and 3:1 for component borders. */
+
+:root {
+  --font-body: 'Inter Variable', system-ui, sans-serif;
+  --font-mono:
+    'Roboto Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #07060c;
+  --blob-purple: rgb(127 90 240 / 0.3);
+  --blob-pink: rgb(255 121 198 / 0.14);
+
+  --surface: #0b0b0d;
+  --glass-bg: rgb(127 90 240 / 0.12);
+  --glass-border: #7f5af0;
+  --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.37);
+
+  --text: #e6e4f0;
+  --text-muted: #94a3b8;
+  --accent-fill: #6b46e0;
+  --on-accent: #fffffe;
+  --accent-text: #b498ff;
+  --highlight: #ff79c6;
+  --highlight-glow: rgb(255 121 198 / 0.4);
+  --border: #7f5af0;
+
+  --danger: #ff7b8f;
+  --success: #50fa7b;
+  --warning: #f1fa8c;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f5f3ff;
+  --blob-purple: rgb(127 90 240 / 0.18);
+  --blob-pink: rgb(255 121 198 / 0.16);
+
+  --surface: #ffffff;
+  --glass-bg: rgb(255 255 255 / 0.55);
+  --glass-border: #5b3fd0;
+  --glass-shadow: 0 8px 32px rgb(91 63 208 / 0.15);
+
+  --text: #1b1730;
+  --text-muted: #5b5675;
+  --accent-fill: #5b3fd0;
+  --on-accent: #ffffff;
+  --accent-text: #5b3fd0;
+  --highlight: #b0307f;
+  --highlight-glow: rgb(176 48 127 / 0.3);
+  --border: #5b3fd0;
+
+  --danger: #b3261e;
+  --success: #1a7f37;
+  --warning: #8a5a00;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  line-height: 1.6;
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+/* Decorative backdrop: two soft colour blobs for the glass to refract.
+   Plain radial gradients are cheap, unlike a blur filter on a huge element. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40rem 32rem at 12% 8%, var(--blob-purple), transparent 70%),
+    radial-gradient(34rem 28rem at 88% 92%, var(--blob-pink), transparent 70%);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-mono);
+  line-height: 1.2;
+  color: var(--accent-text);
+}
+
+a {
+  color: var(--accent-text);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--highlight);
+}
+
+:focus-visible {
+  outline: 3px solid var(--highlight);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Frames the page (header, summary cards, login, modals). Never for dense
+   data: tables and long forms use .surface so reading stays effortless. */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.5rem;
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .glass {
+    background: var(--surface);
+  }
+}
+
+.surface {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 0 20px rgb(127 90 240 / 0.15);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.75rem 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.btn:hover {
+  border-color: var(--highlight);
+  box-shadow: 0 0 20px var(--highlight-glow);
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-primary {
+  color: var(--on-accent);
+  background: var(--accent-fill);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.input {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.field-error {
+  font-size: 0.875rem;
+  color: var(--danger);
+}

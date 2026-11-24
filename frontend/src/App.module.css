@@ -1,0 +1,21 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: min(100% - 2rem, 72rem);
+  min-height: 100vh;
+  margin-inline: auto;
+  padding-block: 1.5rem;
+}
+
+.header {
+  padding: 1rem 1.5rem;
+}
+
+.header h1 {
+  font-size: 1.25rem;
+}
+
+.main {
+  flex: 1;
+}

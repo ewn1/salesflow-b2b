@@ -1,3 +1,6 @@
+import '@fontsource-variable/inter/wght.css'
+import '@fontsource-variable/roboto-mono/wght.css'
+import './index.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter } from 'react-router'
