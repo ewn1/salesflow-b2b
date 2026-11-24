@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { setSessionExpiredHandler } from './api/client'
-import authReducer, { sessionEnded } from './auth/authSlice'
+import authReducer, { loadCurrentUser, sessionEnded } from './auth/authSlice'
 
 export function createAppStore() {
   return configureStore({ reducer: { auth: authReducer } })
@@ -16,4 +16,13 @@ export function connectSessionExpiry(store: AppStore) {
   setSessionExpiredHandler(() => {
     store.dispatch(sessionEnded())
   })
+}
+
+// A stored token only means "maybe logged in": the API still has to say who
+// the user is. Without a token the status is already "anonymous" and no
+// request is made.
+export async function restoreSession(store: AppStore) {
+  if (store.getState().auth.status === 'checking') {
+    await store.dispatch(loadCurrentUser())
+  }
 }

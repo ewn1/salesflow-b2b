@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { request, setSessionExpiredHandler } from './api/client'
 import { loadCurrentUser } from './auth/authSlice'
 import { getAccessToken, saveTokens } from './auth/tokenStorage'
-import { connectSessionExpiry, createAppStore } from './store'
+import { connectSessionExpiry, createAppStore, restoreSession } from './store'
 
 const user = { id: 1, username: 'alice', email: 'alice@example.com' }
 const fetchMock = vi.fn()
@@ -59,5 +59,26 @@ describe('connectSessionExpiry', () => {
 
     expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
     expect(getAccessToken()).toBeNull()
+  })
+})
+
+describe('restoreSession', () => {
+  it('loads the user when a token is stored', async () => {
+    saveTokens({ access: 'access-1', refresh: 'refresh-1' })
+    fetchMock.mockResolvedValueOnce(jsonResponse(user))
+    const store = createAppStore()
+
+    await restoreSession(store)
+
+    expect(store.getState().auth).toEqual({ status: 'authenticated', user })
+  })
+
+  it('does nothing when there is no stored token', async () => {
+    const store = createAppStore()
+
+    await restoreSession(store)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(store.getState().auth).toEqual({ status: 'anonymous', user: null })
   })
 })
