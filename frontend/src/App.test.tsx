@@ -19,6 +19,14 @@ describe('header', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('lets any visitor switch the theme', () => {
+    renderApp('/login')
+
+    expect(
+      screen.getByRole('button', { name: 'Usar tema claro' }),
+    ).toBeInTheDocument()
+  })
+
   it('lets a signed-in user log out', async () => {
     const user = userEvent.setup()
     saveTokens({ access: 'access-1', refresh: 'refresh-1' })

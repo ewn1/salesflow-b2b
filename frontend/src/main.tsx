@@ -8,6 +8,9 @@ import { RouterProvider } from 'react-router/dom'
 import { routes } from './routes'
 import { Provider } from 'react-redux'
 import { connectSessionExpiry, createAppStore, restoreSession } from './store'
+import { initTheme } from './theme'
+
+initTheme()
 
 const store = createAppStore()
 // Order matters: the expiry hook must exist before the first request,
