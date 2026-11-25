@@ -6,6 +6,13 @@ import { renderApp } from '../test/renderApp'
 
 const alice = { id: 1, username: 'alice', email: 'alice@example.com' }
 
+async function signIn(username: string, password: string) {
+  const user = userEvent.setup()
+  await user.type(screen.getByLabelText('Usuário'), username)
+  await user.type(screen.getByLabelText('Senha'), password)
+  await user.click(screen.getByRole('button', { name: 'Entrar' }))
+}
+
 describe('LoginPage', () => {
   const fetchMock = setupFetchMock()
 
@@ -24,11 +31,8 @@ describe('LoginPage', () => {
       )
       .mockResolvedValueOnce(jsonResponse(alice))
     renderApp('/login')
-    const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText('Usuário'), 'alice')
-    await user.type(screen.getByLabelText('Senha'), 'secret-pass')
-    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    await signIn('alice', 'secret-pass')
 
     expect(
       await screen.findByRole('heading', { name: 'Painel' }),
@@ -37,5 +41,36 @@ describe('LoginPage', () => {
       username: 'alice',
       password: 'secret-pass',
     })
+  })
+
+  it.each([
+    [
+      'the credentials are refused',
+      () =>
+        Promise.resolve(
+          jsonResponse({ detail: 'No active account found' }, 401),
+        ),
+      'Usuário ou senha incorretos.',
+    ],
+    [
+      'the network fails',
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      'Não foi possível conectar ao servidor. Tente novamente.',
+    ],
+    [
+      'the server fails',
+      () => Promise.resolve(jsonResponse({ detail: 'Server error' }, 500)),
+      'Não foi possível entrar agora. Tente novamente em instantes.',
+    ],
+  ])('shows an alert when %s', async (_reason, answer, message) => {
+    fetchMock.mockImplementation(answer)
+    renderApp('/login')
+
+    await signIn('alice', 'wrong-pass')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(
+      screen.queryByRole('heading', { name: 'Painel' }),
+    ).not.toBeInTheDocument()
   })
 })

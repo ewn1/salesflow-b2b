@@ -1,19 +1,33 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { login } from '../auth/authSlice'
+import { login, type AuthError } from '../auth/authSlice'
 import { useAppDispatch } from '../hooks'
 import styles from './LoginPage.module.css'
+
+function loginErrorMessage(error: AuthError | undefined) {
+  if (error?.status === 401) {
+    return 'Usuário ou senha incorretos.'
+  }
+  if (error?.status === null) {
+    return 'Não foi possível conectar ao servidor. Tente novamente.'
+  }
+  return 'Não foi possível entrar agora. Tente novamente em instantes.'
+}
 
 function LoginPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   async function submit() {
+    setErrorMessage(null)
     const result = await dispatch(login({ username, password }))
     if (login.fulfilled.match(result)) {
       navigate('/')
+    } else {
+      setErrorMessage(loginErrorMessage(result.payload))
     }
   }
 
@@ -51,6 +65,11 @@ function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
         </div>
+        {errorMessage && (
+          <p role="alert" className="field-error">
+            {errorMessage}
+          </p>
+        )}
         <button type="submit" className="btn btn-primary">
           Entrar
         </button>
