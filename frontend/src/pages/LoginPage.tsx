@@ -20,14 +20,17 @@ function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   async function submit() {
     setErrorMessage(null)
+    setSubmitting(true)
     const result = await dispatch(login({ username, password }))
     if (login.fulfilled.match(result)) {
       navigate('/')
     } else {
       setErrorMessage(loginErrorMessage(result.payload))
+      setSubmitting(false)
     }
   }
 
@@ -70,8 +73,8 @@ function LoginPage() {
             {errorMessage}
           </p>
         )}
-        <button type="submit" className="btn btn-primary">
-          Entrar
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
+          {submitting ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
     </section>

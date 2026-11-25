@@ -73,4 +73,23 @@ describe('LoginPage', () => {
       screen.queryByRole('heading', { name: 'Painel' }),
     ).not.toBeInTheDocument()
   })
+
+  it('disables the button and shows progress while the login is in flight', async () => {
+    let release: (response: Response) => void = () => {}
+    fetchMock.mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve
+        }),
+    )
+    renderApp('/login')
+
+    await signIn('alice', 'secret-pass')
+
+    expect(screen.getByRole('button', { name: 'Entrando...' })).toBeDisabled()
+
+    release(jsonResponse({ detail: 'No active account found' }, 401))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled()
+  })
 })
