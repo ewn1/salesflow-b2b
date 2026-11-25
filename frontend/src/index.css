@@ -219,6 +219,17 @@ a:hover {
   color: var(--text-muted);
 }
 
+/* Chrome paints autofilled fields with its own background and text colour,
+  ignoring the theme. An inset shadow covers that background (the border
+  radius is respected) and the text fill colour restores readable text. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  box-shadow: 0 0 0 1000px var(--surface) inset;
+}
+
 .input[aria-invalid='true'] {
   border-color: var(--danger);
 }
